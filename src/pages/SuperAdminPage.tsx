@@ -480,11 +480,11 @@ export default function SuperAdminPage() {
                   <tbody>
                     {payments.length === 0 ? (
                       <tr><td colSpan={6} className="py-12 text-center text-muted-foreground">To'lovlar yo'q</td></tr>
-                    ) : [...payments].reverse().map(p => {
-                      const comp = companies.find(c => c.key === p.companyKey);
+                    ) : payments.map((p: any) => {
+                      const comp = companies.find(c => c.key === p.company_key);
                       return (
                         <tr key={p.id} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
-                          <td className="py-3 px-4 font-medium">{comp?.name || p.companyKey}</td>
+                          <td className="py-3 px-4 font-medium">{p.company_name || comp?.name || p.company_key}</td>
                           <td className="py-3 px-4 font-semibold">{formatCurrency(p.amount)}</td>
                           <td className="py-3 px-4 text-muted-foreground text-xs">{formatDate(p.payment_date)}</td>
                           <td className="py-3 px-4">
