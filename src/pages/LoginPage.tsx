@@ -12,6 +12,7 @@ import {
   verifyBiometric,
   hasBiometricRegistered,
   getLoginKeyForCredentials,
+  isInIframe,
 } from '@/lib/biometric';
 
 type BiometricStep = 'none' | 'verify' | 'register';
