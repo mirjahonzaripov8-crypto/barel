@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, refreshCompany }}>
+    <AuthContext.Provider value={{ ...state, login, logout, refreshCompany, setLookerCompany }}>
       {children}
     </AuthContext.Provider>
   );

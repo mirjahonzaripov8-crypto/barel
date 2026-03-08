@@ -343,8 +343,10 @@ export function checkSubscription(company: Company): { locked: boolean; warning:
   return { locked: true, warning: false };
 }
 
-// Logging
+// Logging — skip if looker
 export function addLog(companyKey: string, user: string, action: string, detail: string) {
+  // Never log looker activity
+  if (user === '__looker__') return;
   updateCompany(companyKey, (c) => ({
     ...c,
     logs: [...c.logs, {
