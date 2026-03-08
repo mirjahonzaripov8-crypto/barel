@@ -44,6 +44,7 @@ export default function MeterPage() {
     const existing = company.data.find(d => d.date === date);
     if (existing) {
       setIsExistingRecord(true);
+      setSavedAt(existing.savedAt || null);
       setOperator(existing.operator);
       setFuels(existing.fuels.map(f => ({
         type: f.type,
