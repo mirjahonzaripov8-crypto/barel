@@ -17,17 +17,13 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
   const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
 
-  // Looker bypasses subscription checks entirely
-  if (isLooker) return <>{children}</>;
-
   const card = getAdminCard();
 
   const getExpiryInfo = useCallback(() => {
-    if (!company) return { locked: false, warning: false, daysPastExpiry: 0 };
+    if (!company || isLooker) return { locked: false, warning: false, daysPastExpiry: 0 };
     const sub = checkSubscription(company);
     if (!sub.locked) return { ...sub, daysPastExpiry: 0 };
 
-    // Calculate days past expiry
     let expiryDate: Date | null = null;
     if (company.subscription.status === 'trial') {
       expiryDate = new Date(company.subscription.trial_end_date);
@@ -40,15 +36,13 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
       : 999;
 
     return { ...sub, daysPastExpiry: daysPast };
-  }, [company]);
+  }, [company, isLooker]);
 
-  // 10-minute reminder interval
   useEffect(() => {
-    if (!company) return;
+    if (!company || isLooker) return;
     const info = getExpiryInfo();
     if (!info.locked) return;
 
-    // Show immediately
     if (info.daysPastExpiry >= 2) {
       setHardLocked(true);
     } else {
@@ -60,14 +54,13 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
       if (currentInfo.locked && currentInfo.daysPastExpiry < 2) {
         setReminderOpen(true);
       }
-    }, 10 * 60 * 1000); // 10 minutes
+    }, 10 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [company, getExpiryInfo]);
+  }, [company, getExpiryInfo, isLooker]);
 
-  // Telegram reminder every 5 hours for boss
   useEffect(() => {
-    if (!company || !user || user.role !== 'BOSS') return;
+    if (!company || !user || user.role !== 'BOSS' || isLooker) return;
     const info = getExpiryInfo();
     if (!info.locked) return;
 
@@ -100,10 +93,13 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
     };
 
     sendTelegramReminder();
-    const interval = setInterval(sendTelegramReminder, 5 * 60 * 60 * 1000); // 5 hours
+    const interval = setInterval(sendTelegramReminder, 5 * 60 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [company, user, getExpiryInfo, card]);
+  }, [company, user, getExpiryInfo, card, isLooker]);
+
+  // Looker bypasses subscription checks entirely
+  if (isLooker) return <>{children}</>;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
