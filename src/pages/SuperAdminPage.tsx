@@ -295,7 +295,21 @@ export default function SuperAdminPage() {
         };
         saveFeatureRequests(reqs);
       }
-      toast.success("Funksiya bajarildi deb belgilandi!");
+      // Also create a CustomFeature for tracking
+      const company = companies.find(c => c.key === selectedFeature!.companyKey);
+      addCustomFeature({
+        id: `cf_${Date.now()}`,
+        title: selectedFeature!.description.slice(0, 60),
+        description: `${selectedFeature!.companyName} so'rovi`,
+        prompt: featurePrompt.trim(),
+        targetPlan: (company?.plan as any) || 'STANDART',
+        status: 'testing',
+        fromRequestId: selectedFeature!.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        testedAt: new Date().toISOString(),
+      });
+      toast.success("Funksiya 'Funksiya boshqaruvi' bo'limida test uchun qo'shildi!");
       setFeaturePromptOpen(false);
       forceRefresh();
     });
