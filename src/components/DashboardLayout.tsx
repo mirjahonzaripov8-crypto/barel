@@ -30,8 +30,14 @@ export default function DashboardLayout() {
 
   const plan = (company?.plan || 'START') as PlanKey;
 
-  // Filter nav items based on plan
-  const navItems = allNavItems.filter(item => isRouteAllowed(plan, item.path));
+  // Filter nav items based on plan and role
+  const isOperator = user?.role === 'OPERATOR';
+  const navItems = allNavItems.filter(item => {
+    if (!isRouteAllowed(plan, item.path)) return false;
+    // Operators can only see Hisoblagich
+    if (isOperator && item.path !== '/dashboard/meter') return false;
+    return true;
+  });
 
   // Redirect if trying to access restricted route
   useEffect(() => {
