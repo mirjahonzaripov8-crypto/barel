@@ -140,14 +140,17 @@ export default function MeterPage() {
   };
 
   const save = () => {
+    if (isEditExpired) { toast.error("30 daqiqa o'tdi, tahrirlash mumkin emas!"); return; }
     if (!date || !operator.trim()) { toast.error("Sana va operatorni kiriting!"); return; }
 
     const hasEnd = fuels.some(f => f.end > 0);
     if (!hasEnd) { toast.error("Kamida bitta yoqilg'i uchun oxirgi ko'rsatkichni kiriting!"); return; }
 
+    const now = new Date().toISOString();
+
     updateCompany(company.key, c => {
       const existing = c.data.findIndex(d => d.date === date);
-      const record = { date, operator, fuels, expenses, terminal };
+      const record = { date, operator, fuels, expenses, terminal, savedAt: now };
       if (existing >= 0) {
         c.data[existing] = record;
       } else {
@@ -159,6 +162,7 @@ export default function MeterPage() {
     addLog(company.key, user?.login || '', 'Hisoblagich', `${date} uchun ma'lumotlar saqlandi`);
     refreshCompany();
     setIsExistingRecord(true);
+    setSavedAt(now);
 
     // "Oxirgi yangi" → "Oxirgi hisoblagich" ga o'tkazish (keyingi kiritish uchun)
     setFuels(prev => prev.map(f => ({
