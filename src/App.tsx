@@ -18,6 +18,7 @@ import PlombaPage from "./pages/dashboard/PlombaPage";
 import ReferralsPage from "./pages/dashboard/ReferralsPage";
 import SecurityPage from "./pages/dashboard/SecurityPage";
 import AIAssistantPage from "./pages/dashboard/AIAssistantPage";
+import TelegramPage from "./pages/dashboard/TelegramPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import NotFound from "./pages/NotFound";
 
@@ -65,6 +66,7 @@ const App = () => (
               <Route path="referrals" element={<ReferralsPage />} />
               <Route path="security" element={<SecurityPage />} />
               <Route path="ai" element={<AIAssistantPage />} />
+              <Route path="telegram" element={<TelegramPage />} />
             </Route>
             <Route path="/admin" element={<AdminRoute><SuperAdminPage /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />

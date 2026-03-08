@@ -14,7 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      telegram_settings: {
+        Row: {
+          chat_id: string | null
+          company_key: string
+          created_at: string | null
+          daily_report_time: string | null
+          enabled: boolean | null
+          id: string
+          live_notifications: boolean | null
+          updated_at: string | null
+        }
+        Insert: {
+          chat_id?: string | null
+          company_key: string
+          created_at?: string | null
+          daily_report_time?: string | null
+          enabled?: boolean | null
+          id?: string
+          live_notifications?: boolean | null
+          updated_at?: string | null
+        }
+        Update: {
+          chat_id?: string | null
+          company_key?: string
+          created_at?: string | null
+          daily_report_time?: string | null
+          enabled?: boolean | null
+          id?: string
+          live_notifications?: boolean | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

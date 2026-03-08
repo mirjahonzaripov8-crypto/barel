@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown
+  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,6 +17,7 @@ const allNavItems = [
   { path: '/dashboard/workers', icon: Users, label: 'Ishchilar', minPlan: 'PRO' },
   { path: '/dashboard/plomba', icon: Lock, label: 'Plomba', minPlan: 'PRO' },
   { path: '/dashboard/referrals', icon: Gift, label: 'Referallar', minPlan: 'PREMIUM' },
+  { path: '/dashboard/telegram', icon: Send, label: 'Telegram', minPlan: 'STANDART' },
   { path: '/dashboard/security', icon: Shield, label: 'Xavfsizlik' },
   { path: '/dashboard/ai', icon: Bot, label: 'AI yordamchi', minPlan: 'PREMIUM' },
 ];
