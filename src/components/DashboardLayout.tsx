@@ -32,9 +32,8 @@ export default function DashboardLayout() {
   const plan = (company?.plan || 'START') as PlanKey;
 
   // Filter nav items based on plan and role
-  const isOperator = user?.role === 'OPERATOR' && !isLooker;
+  const isOperator = user?.role === 'OPERATOR';
   const navItems = allNavItems.filter(item => {
-    if (isLooker) return true; // Looker sees everything
     if (!isRouteAllowed(plan, item.path)) return false;
     if (isOperator && item.path !== '/dashboard/meter') return false;
     return true;
