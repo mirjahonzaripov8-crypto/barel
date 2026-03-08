@@ -115,10 +115,11 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
   const submitPayment = () => {
     if (!company || !receiptBase64) return;
     setUploading(true);
+    const planPrice = company.plan && PLANS[company.plan] ? PLANS[company.plan].price : 0;
     const payment: Payment = {
       id: `pay_${Date.now()}`,
       companyKey: company.key,
-      amount: 0, // Admin will set
+      amount: planPrice,
       payment_date: new Date().toISOString(),
       status: 'pending',
       receipt_base64: receiptBase64,
