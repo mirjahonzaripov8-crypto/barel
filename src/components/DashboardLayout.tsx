@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send
+  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isRouteAllowed, type PlanKey } from '@/lib/helpers';
+import { getActiveFeaturesByPlan, getTestingFeaturesByPlan } from '@/lib/store';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
 
 const allNavItems = [
@@ -33,15 +34,30 @@ export default function DashboardLayout() {
 
   // Filter nav items based on plan and role
   const isOperator = user?.role === 'OPERATOR';
-  const navItems = allNavItems.filter(item => {
-    if (!isRouteAllowed(plan, item.path)) return false;
-    if (isOperator && item.path !== '/dashboard/meter') return false;
-    return true;
-  });
+  
+  // Get custom features for this plan
+  const customFeatureItems = [
+    ...getActiveFeaturesByPlan(plan),
+    ...getTestingFeaturesByPlan(plan),
+  ].map(cf => ({
+    path: `/dashboard/feature/${cf.id}`,
+    icon: Sparkles,
+    label: cf.status === 'testing' ? `🧪 ${cf.title}` : `✨ ${cf.title}`,
+  }));
+
+  const navItems = [
+    ...allNavItems.filter(item => {
+      if (!isRouteAllowed(plan, item.path)) return false;
+      if (isOperator && item.path !== '/dashboard/meter') return false;
+      return true;
+    }),
+    ...(isOperator ? [] : customFeatureItems),
+  ];
 
   // Redirect if trying to access restricted route
   useEffect(() => {
-    if (!isRouteAllowed(plan, location.pathname)) {
+    const isCustomFeatureRoute = location.pathname.startsWith('/dashboard/feature/');
+    if (!isCustomFeatureRoute && !isRouteAllowed(plan, location.pathname)) {
       navigate('/dashboard/meter');
       return;
     }
@@ -87,7 +103,7 @@ export default function DashboardLayout() {
             >
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
-              {item.minPlan === 'PREMIUM' && <Crown className="h-3 w-3 ml-auto text-yellow-500" />}
+              {'minPlan' in item && item.minPlan === 'PREMIUM' && <Crown className="h-3 w-3 ml-auto text-yellow-500" />}
             </button>
           ))}
         </nav>
@@ -146,7 +162,7 @@ export default function DashboardLayout() {
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" /> {item.label}
-              {item.minPlan === 'PREMIUM' && <Crown className="h-3 w-3 ml-auto text-yellow-500" />}
+              {'minPlan' in item && item.minPlan === 'PREMIUM' && <Crown className="h-3 w-3 ml-auto text-yellow-500" />}
             </button>
           ))}
         </nav>
