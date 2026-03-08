@@ -156,12 +156,7 @@ export default function SuperAdminPage() {
     const pid = pendingPaymentId;
     setDurationOpen(false);
 
-    requireSecurity(() => {
-      const ps = getPayments();
-      const idx = ps.findIndex(p => p.id === pid);
-      if (idx < 0) return;
-      ps[idx].status = 'approved';
-
+    requireSecurity(async () => {
       let until: Date;
       if (useCustomDate && customDate) {
         until = new Date(customDate);
@@ -169,17 +164,24 @@ export default function SuperAdminPage() {
         until = new Date();
         until.setMonth(until.getMonth() + durationMonths);
       }
-      ps[idx].approved_until = until.toISOString();
-      savePayments(ps);
 
-      const cs = getCompanies();
-      const ci = cs.findIndex(c => c.key === ps[idx].companyKey);
-      if (ci >= 0) {
-        cs[ci].subscription = { ...cs[ci].subscription, status: 'active', active_until: until.toISOString() };
-        saveCompanies(cs);
+      await supabase.from('payments').update({ status: 'approved', approved_until: until.toISOString() }).eq('id', pid);
+
+      // Also update local company subscription
+      const payment = payments.find((p: any) => p.id === pid);
+      if (payment) {
+        const cs = getCompanies();
+        const ci = cs.findIndex(c => c.key === payment.company_key);
+        if (ci >= 0) {
+          cs[ci].subscription = { ...cs[ci].subscription, status: 'active', active_until: until.toISOString() };
+          saveCompanies(cs);
+        }
       }
       toast.success("To'lov tasdiqlandi!");
       forceRefresh();
+      // Reload payments
+      const { data } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
+      if (data) setPayments(data);
     });
   };
 
