@@ -150,12 +150,17 @@ Deno.serve(async (req) => {
               await sendMessage(botToken, cbChatId, '❌ Kamida bitta yoqilg\'i tanlang!');
               return ok();
             }
-            // Go to photo meter
+            // Go to terminal
             await upsertSession(supabase, cbChatId, {
-              state: 'AWAITING_PHOTO_METER',
-              data: { ...sd, step: 'PHOTO_METER' },
+              state: 'AWAITING_TERMINAL',
+              data: { ...sd, step: 'TERMINAL' },
             });
-            await sendMessage(botToken, cbChatId, '📸 <b>Hisoblagich rasmini yuboring:</b>');
+            await sendMessage(botToken, cbChatId, '💳 <b>Terminal summasini kiriting:</b>', {
+              inline_keyboard: [
+                [{ text: '✏️ Summa yozish', callback_data: 'term_custom' }],
+                [{ text: '0️⃣ Terminal yo\'q', callback_data: 'term_0' }],
+              ],
+            });
             return ok();
           }
 
