@@ -305,6 +305,7 @@ export default function SuperAdminPage() {
     { id: 'features' as Tab, icon: Sparkles, label: "Funksiya so'rovlar", badge: pendingFeatures.length },
     { id: 'card' as Tab, icon: Wallet, label: "Karta ma'lumotlari" },
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Xabarlar' },
+    { id: 'faceid' as Tab, icon: ScanFace, label: 'Face ID' },
   ];
 
   const getFeatureStatusBadge = (status: FeatureRequest['status']) => {
