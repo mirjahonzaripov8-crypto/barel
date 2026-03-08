@@ -325,8 +325,6 @@ export default function AIAssistantPage() {
                 )}
                 {r.status === 'priced' && (
                   <Button size="sm" className="mt-2" onClick={() => {
-                    // Mark as paid
-                    const { updateFeatureRequest } = require('@/lib/store');
                     updateFeatureRequest(r.id, (req: FeatureRequest) => ({ ...req, status: 'paid' as const, updated_at: new Date().toISOString() }));
                     toast.success("To'lov tasdiqlandi! Admin tez orada funksiyani qo'shadi.");
                     refreshRequests();
