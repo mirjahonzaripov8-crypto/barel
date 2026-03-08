@@ -53,6 +53,7 @@ export type Database = {
       telegram_settings: {
         Row: {
           chat_id: string | null
+          company_data: Json | null
           company_key: string
           created_at: string | null
           daily_report_time: string | null
@@ -63,6 +64,7 @@ export type Database = {
         }
         Insert: {
           chat_id?: string | null
+          company_data?: Json | null
           company_key: string
           created_at?: string | null
           daily_report_time?: string | null
@@ -73,6 +75,7 @@ export type Database = {
         }
         Update: {
           chat_id?: string | null
+          company_data?: Json | null
           company_key?: string
           created_at?: string | null
           daily_report_time?: string | null

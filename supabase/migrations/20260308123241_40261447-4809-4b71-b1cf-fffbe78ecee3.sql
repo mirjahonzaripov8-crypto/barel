@@ -1,0 +1,1 @@
+ALTER TABLE public.telegram_settings ADD COLUMN IF NOT EXISTS company_data jsonb DEFAULT '{}'::jsonb;

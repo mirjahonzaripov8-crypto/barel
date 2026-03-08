@@ -71,6 +71,12 @@ export default function TelegramPage() {
   async function saveSettings() {
     setLoading(true);
     try {
+      // Save company users and fuel types for bot auth
+      const companyData = {
+        users: company!.users.map(u => ({ login: u.login, password: u.password, name: u.name, role: u.role })),
+        fuelTypes: company!.fuelTypes.map(f => f.name),
+        companyName: company!.name,
+      };
       const { error } = await supabase
         .from('telegram_settings')
         .upsert({
@@ -79,7 +85,8 @@ export default function TelegramPage() {
           enabled,
           daily_report_time: reportTime,
           live_notifications: isPremium ? liveNotifications : false,
-        }, { onConflict: 'company_key' });
+          company_data: companyData,
+        } as any, { onConflict: 'company_key' });
 
       if (error) throw error;
       toast.success('Sozlamalar saqlandi');
