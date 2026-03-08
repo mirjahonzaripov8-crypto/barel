@@ -56,7 +56,7 @@ export interface CompanyUser {
   login: string;
   password: string;
   name: string;
-  role: 'BOSS' | 'WORKER';
+  role: 'BOSS' | 'OPERATOR';
 }
 
 export interface LogEntry {
