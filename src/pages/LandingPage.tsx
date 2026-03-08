@@ -1,7 +1,8 @@
-import { Fuel, BarChart3, Shield, Clock, Users, FileText, Zap, Award, ChevronRight, Check, Phone, MapPin } from 'lucide-react';
+import { Fuel, BarChart3, Shield, Clock, Users, FileText, Zap, Award, ChevronRight, Check, Phone, MapPin, Send, Instagram } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { PLANS, type PlanKey } from '@/lib/helpers';
+import { getContacts } from '@/lib/store';
 
 const steps = [
   { num: 1, title: "Ro'yxatdan o'ting", desc: "Korxona ma'lumotlarini kiriting va 7 kunlik bepul sinovdan foydalaning." },
