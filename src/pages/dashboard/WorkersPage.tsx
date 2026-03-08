@@ -49,6 +49,8 @@ export default function WorkersPage() {
     }));
     addLog(company.key, user?.login || '', 'Ishchi', `${workerLogin} o'chirildi`);
     refreshCompany();
+    const updated = getCompanyByKey(company.key);
+    if (updated) syncCompanyUsersToDb(updated);
     toast.success("Ishchi o'chirildi!");
   };
 
