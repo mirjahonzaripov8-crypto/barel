@@ -18,6 +18,7 @@ export interface DayRecord {
   }[];
   expenses: { reason: string; amount: number }[];
   terminal: number;
+  savedAt?: string; // ISO timestamp for 30-min edit window
 }
 
 export interface Company {
