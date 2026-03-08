@@ -1,48 +1,87 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { getTodayStr, formatCurrency } from '@/lib/helpers';
+import { getTodayStr, formatCurrency, formatNumber } from '@/lib/helpers';
 import { updateCompany, addLog } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Gauge, Plus, Trash2, PackagePlus } from 'lucide-react';
+import { Gauge, Plus, Trash2, PackagePlus, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function MeterPage() {
   const { company, user, refreshCompany } = useAuth();
   const [date, setDate] = useState(getTodayStr());
   const [operator, setOperator] = useState(company?.ops.op1 || '');
-  
-  // Get previous day's end values as today's start
-  const getPreviousEnd = (fuelType: string): number => {
+  const [fuels, setFuels] = useState<{ type: string; start: number; sold: number; end: number; price: number; prixod: number; tannarx: number }[]>([]);
+  const [expenses, setExpenses] = useState<{ reason: string; amount: number }[]>([]);
+  const [terminal, setTerminal] = useState(0);
+
+  // Get previous day's end value for a fuel type (before given date)
+  const getPreviousEnd = useCallback((fuelType: string, beforeDate: string): number => {
     if (!company?.data.length) return 0;
-    const sortedData = [...company.data].sort((a, b) => b.date.localeCompare(a.date));
-    for (const day of sortedData) {
+    const sorted = [...company.data]
+      .filter(d => d.date < beforeDate)
+      .sort((a, b) => b.date.localeCompare(a.date));
+    for (const day of sorted) {
       const fuel = day.fuels.find(f => f.type === fuelType);
       if (fuel && fuel.end > 0) return fuel.end;
     }
     return 0;
-  };
+  }, [company?.data]);
 
-  const [fuels, setFuels] = useState(
-    company?.fuelTypes.map(ft => {
-      const prevEnd = getPreviousEnd(ft.name);
-      return { type: ft.name, start: prevEnd, sold: 0, end: prevEnd, price: company?.conf.prices[ft.name] || 0, prixod: 0, tannarx: 0 };
-    }) || []
-  );
-  const [expenses, setExpenses] = useState<{ reason: string; amount: number }[]>([]);
-  const [terminal, setTerminal] = useState(0);
+  // Load data when date or company changes
+  useEffect(() => {
+    if (!company) return;
+
+    const existing = company.data.find(d => d.date === date);
+    if (existing) {
+      // Load existing record
+      setOperator(existing.operator);
+      setFuels(existing.fuels.map(f => ({
+        type: f.type,
+        start: f.start,
+        sold: f.sold,
+        end: f.end,
+        price: f.price,
+        prixod: f.prixod || 0,
+        tannarx: f.tannarx || 0,
+      })));
+      setExpenses(existing.expenses || []);
+      setTerminal(existing.terminal || 0);
+    } else {
+      // New day - start = previous day's end
+      setFuels(company.fuelTypes.map(ft => {
+        const prevEnd = getPreviousEnd(ft.name, date);
+        return {
+          type: ft.name,
+          start: prevEnd,
+          sold: 0,
+          end: 0,
+          price: company.conf.prices[ft.name] || 0,
+          prixod: 0,
+          tannarx: 0,
+        };
+      }));
+      setExpenses([]);
+      setTerminal(0);
+      setOperator(company.ops.op1 || '');
+    }
+  }, [date, company, getPreviousEnd]);
 
   if (!company) return null;
 
-  // Update fuel: end is entered, sold is calculated as (end - start + prixod)
+  // Sotilgan = Boshlang'ich - Oxirgi yangi + Prixod
+  // (Boshlang'ich katta, yoqilg'i sotilgandan keyin Oxirgi kichrayadi)
   const updateFuel = (i: number, key: string, val: number) => {
     const f = [...fuels];
     (f[i] as any)[key] = val;
-    
-    // Sotilgan = Oxirgi - Boshlang'ich + Prixod
+
     if (key === 'end' || key === 'start' || key === 'prixod') {
-      f[i].sold = Math.max(0, f[i].start - f[i].end + f[i].prixod);
+      const start = f[i].start;
+      const end = f[i].end;
+      const prixod = f[i].prixod;
+      // Sotilgan = start - end + prixod
+      f[i].sold = Math.max(0, start - end + prixod);
     }
     setFuels(f);
   };
@@ -55,6 +94,9 @@ export default function MeterPage() {
 
   const save = () => {
     if (!date || !operator.trim()) { toast.error("Sana va operatorni kiriting!"); return; }
+
+    const hasEnd = fuels.some(f => f.end > 0);
+    if (!hasEnd) { toast.error("Kamida bitta yoqilg'i uchun oxirgi ko'rsatkichni kiriting!"); return; }
 
     updateCompany(company.key, c => {
       const existing = c.data.findIndex(d => d.date === date);
@@ -73,6 +115,10 @@ export default function MeterPage() {
   };
 
   const isLocked = company.locks.main;
+
+  // Calculate totals for summary
+  const totalSales = fuels.reduce((s, f) => s + f.sold * f.price, 0);
+  const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
   return (
     <div>
@@ -97,25 +143,49 @@ export default function MeterPage() {
         <div className="space-y-4 mb-6">
           {fuels.map((f, i) => (
             <div key={f.type} className="p-4 border border-border rounded-lg bg-secondary/20">
-              <p className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Gauge className="h-4 w-4 text-primary" />{f.type}</p>
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold text-foreground flex items-center gap-2">
+                  <Gauge className="h-4 w-4 text-primary" />{f.type}
+                </p>
+                {f.sold > 0 && f.price > 0 && (
+                  <span className="text-xs font-medium text-primary">
+                    {formatCurrency(f.sold * f.price)}
+                  </span>
+                )}
+              </div>
               
-              {/* Sotuv (sales) row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                 <div>
                   <Label className="text-xs">Boshlang'ich</Label>
-                  <Input type="number" value={f.start || ''} onChange={e => updateFuel(i, 'start', Number(e.target.value))} className="mt-1 bg-muted/50" disabled={isLocked || f.start > 0} />
-                  <span className="text-[10px] text-muted-foreground">Oldingi kundan</span>
+                  <Input
+                    type="number"
+                    value={f.start || ''}
+                    onChange={e => updateFuel(i, 'start', Number(e.target.value))}
+                    className="mt-1 bg-muted/50"
+                    disabled={isLocked}
+                  />
+                  {f.start > 0 && <span className="text-[10px] text-muted-foreground">Oldingi kundan</span>}
                 </div>
                 <div>
-                  <Label className="text-xs">Oxirgi</Label>
-                  <Input type="number" value={f.end || ''} onChange={e => updateFuel(i, 'end', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="Hisoblagich ko'rsatkichi" />
+                  <Label className="text-xs">Oxirgi ko'rsatkich</Label>
+                  <Input
+                    type="number"
+                    value={f.end || ''}
+                    onChange={e => updateFuel(i, 'end', Number(e.target.value))}
+                    className="mt-1 border-primary/50 focus:border-primary"
+                    disabled={isLocked}
+                    placeholder="Kiriting"
+                  />
                 </div>
                 <div>
                   <Label className="text-xs">Sotilgan</Label>
-                  <Input type="number" value={f.sold || ''} className="mt-1 bg-muted font-semibold" disabled />
+                  <Input type="number" value={f.sold || ''} className="mt-1 bg-muted font-semibold text-primary" disabled />
                   <span className="text-[10px] text-muted-foreground">Avtomatik</span>
                 </div>
-                <div><Label className="text-xs">Sotuv narxi</Label><Input type="number" value={f.price || ''} onChange={e => updateFuel(i, 'price', Number(e.target.value))} className="mt-1" disabled={isLocked} /></div>
+                <div>
+                  <Label className="text-xs">Sotuv narxi</Label>
+                  <Input type="number" value={f.price || ''} onChange={e => updateFuel(i, 'price', Number(e.target.value))} className="mt-1" disabled={isLocked} />
+                </div>
               </div>
 
               {/* Prixod (incoming) row */}
@@ -152,7 +222,19 @@ export default function MeterPage() {
           <Input type="number" value={terminal || ''} onChange={e => setTerminal(Number(e.target.value))} className="mt-1 w-44" disabled={isLocked} />
         </div>
 
-        <Button onClick={save} disabled={isLocked} className="shadow-button hover:-translate-y-0.5 transition-transform">SAQLASH</Button>
+        {/* Summary */}
+        {totalSales > 0 && (
+          <div className="mb-4 p-3 bg-muted/50 rounded-lg text-sm space-y-1">
+            <div className="flex justify-between"><span className="text-muted-foreground">Jami sotuv:</span><span className="font-semibold">{formatCurrency(totalSales)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Terminal:</span><span>{formatCurrency(terminal)}</span></div>
+            <div className="flex justify-between"><span className="text-muted-foreground">Xarajatlar:</span><span>{formatCurrency(totalExpenses)}</span></div>
+            <div className="flex justify-between border-t border-border pt-1"><span className="text-muted-foreground">Naqd pul:</span><span className="font-bold text-primary">{formatCurrency(totalSales - terminal - totalExpenses)}</span></div>
+          </div>
+        )}
+
+        <Button onClick={save} disabled={isLocked} className="shadow-button hover:-translate-y-0.5 transition-transform">
+          <Save className="h-4 w-4 mr-2" /> SAQLASH
+        </Button>
       </div>
     </div>
   );
