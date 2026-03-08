@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTodayStr, formatCurrency, formatNumber } from '@/lib/helpers';
 import { updateCompany, addLog } from '@/lib/store';
+import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -15,8 +16,9 @@ export default function MeterPage() {
   const [fuels, setFuels] = useState<{ type: string; start: number; sold: number; end: number; price: number; prixod: number; tannarx: number }[]>([]);
   const [expenses, setExpenses] = useState<{ reason: string; amount: number }[]>([]);
   const [terminal, setTerminal] = useState(0);
+  const [isExistingRecord, setIsExistingRecord] = useState(false);
 
-  // Get previous day's end value for a fuel type (before given date)
+  // Get the latest end value for a fuel type from all saved data (up to but not including current date)
   const getPreviousEnd = useCallback((fuelType: string, beforeDate: string): number => {
     if (!company?.data.length) return 0;
     const sorted = [...company.data]
@@ -35,7 +37,7 @@ export default function MeterPage() {
 
     const existing = company.data.find(d => d.date === date);
     if (existing) {
-      // Load existing record
+      setIsExistingRecord(true);
       setOperator(existing.operator);
       setFuels(existing.fuels.map(f => ({
         type: f.type,
@@ -49,7 +51,8 @@ export default function MeterPage() {
       setExpenses(existing.expenses || []);
       setTerminal(existing.terminal || 0);
     } else {
-      // New day - start = previous day's end
+      setIsExistingRecord(false);
+      // New day - "Oxirgi hisoblagich" (start) = previous day's end value
       setFuels(company.fuelTypes.map(ft => {
         const prevEnd = getPreviousEnd(ft.name, date);
         return {
@@ -70,8 +73,7 @@ export default function MeterPage() {
 
   if (!company) return null;
 
-  // Sotilgan = Oxirgi - Boshlang'ich + Prixod
-  // Hisoblagich o'sib boradi, Oxirgi > Boshlang'ich
+  // Sotilgan = Oxirgi yangi - Oxirgi hisoblagich (start) + Prixod
   const updateFuel = (i: number, key: string, val: number) => {
     const f = [...fuels];
     (f[i] as any)[key] = val;
@@ -86,6 +88,44 @@ export default function MeterPage() {
   const removeExpense = (i: number) => setExpenses(expenses.filter((_, idx) => idx !== i));
   const updateExpense = (i: number, key: string, val: any) => {
     const e = [...expenses]; (e[i] as any)[key] = val; setExpenses(e);
+  };
+
+  // Send Telegram notification after save
+  const sendTelegramNotification = async () => {
+    try {
+      const { data: settings } = await supabase
+        .from('telegram_settings')
+        .select('*')
+        .eq('company_key', company.key)
+        .eq('enabled', true)
+        .maybeSingle();
+
+      if (!settings?.chat_id) return;
+
+      const totalSalesVal = fuels.reduce((s, f) => s + f.sold * f.price, 0);
+      const totalExpVal = expenses.reduce((s, e) => s + e.amount, 0);
+
+      await supabase.functions.invoke('telegram-bot', {
+        body: {
+          action: 'daily_report',
+          chat_id: settings.chat_id,
+          company_name: company.name,
+          report_date: date,
+          fuels: fuels.filter(f => f.sold > 0).map(f => ({
+            type: f.type,
+            sold: formatNumber(f.sold),
+            unit: company.fuelTypes.find(ft => ft.name === f.type)?.unit || 'L',
+            price: formatNumber(f.price),
+            total: formatNumber(f.sold * f.price),
+          })),
+          total_sales: formatNumber(totalSalesVal),
+          total_expenses: formatNumber(totalExpVal),
+          net_profit: formatNumber(totalSalesVal - totalExpVal),
+        },
+      });
+    } catch (err) {
+      console.error('Telegram notification error:', err);
+    }
   };
 
   const save = () => {
@@ -107,12 +147,15 @@ export default function MeterPage() {
     });
     addLog(company.key, user?.login || '', 'Hisoblagich', `${date} uchun ma'lumotlar saqlandi`);
     refreshCompany();
+    setIsExistingRecord(true);
     toast.success("Kunlik ma'lumotlar saqlandi!");
+
+    // Send TG notification
+    sendTelegramNotification();
   };
 
   const isLocked = company.locks.main;
 
-  // Calculate totals for summary
   const totalSales = fuels.reduce((s, f) => s + f.sold * f.price, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
 
@@ -152,18 +195,18 @@ export default function MeterPage() {
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                 <div>
-                  <Label className="text-xs">Boshlang'ich</Label>
+                  <Label className="text-xs">Oxirgi hisoblagich</Label>
                   <Input
                     type="number"
                     value={f.start || ''}
                     onChange={e => updateFuel(i, 'start', Number(e.target.value))}
                     className="mt-1 bg-muted/50"
-                    disabled={isLocked}
+                    disabled={isLocked || isExistingRecord || f.start > 0}
                   />
-                  {f.start > 0 && <span className="text-[10px] text-muted-foreground">Oldingi kundan</span>}
+                  {f.start > 0 && <span className="text-[10px] text-muted-foreground">🔒 Oldingi kundan</span>}
                 </div>
                 <div>
-                  <Label className="text-xs">Oxirgi ko'rsatkich</Label>
+                  <Label className="text-xs">Oxirgi yangi</Label>
                   <Input
                     type="number"
                     value={f.end || ''}
