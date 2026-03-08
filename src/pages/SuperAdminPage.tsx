@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle,
-  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles
+  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet
 } from 'lucide-react';
 import { toast } from 'sonner';
 
