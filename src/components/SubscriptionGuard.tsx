@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function SubscriptionGuard({ children }: { children: React.ReactNode }) {
-  const { company, user, logout, isLooker } = useAuth();
+  const { company, user, logout } = useAuth();
   const [reminderOpen, setReminderOpen] = useState(false);
   const [hardLocked, setHardLocked] = useState(false);
   const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
@@ -20,7 +20,7 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
   const card = getAdminCard();
 
   const getExpiryInfo = useCallback(() => {
-    if (!company || isLooker) return { locked: false, warning: false, daysPastExpiry: 0 };
+    if (!company) return { locked: false, warning: false, daysPastExpiry: 0 };
     const sub = checkSubscription(company);
     if (!sub.locked) return { ...sub, daysPastExpiry: 0 };
 
@@ -36,10 +36,10 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
       : 999;
 
     return { ...sub, daysPastExpiry: daysPast };
-  }, [company, isLooker]);
+  }, [company]);
 
   useEffect(() => {
-    if (!company || isLooker) return;
+    if (!company) return;
     const info = getExpiryInfo();
     if (!info.locked) return;
 
@@ -57,10 +57,10 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
     }, 10 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [company, getExpiryInfo, isLooker]);
+  }, [company, getExpiryInfo]);
 
   useEffect(() => {
-    if (!company || !user || user.role !== 'BOSS' || isLooker) return;
+    if (!company || !user || user.role !== 'BOSS') return;
     const info = getExpiryInfo();
     if (!info.locked) return;
 
@@ -96,10 +96,8 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
     const interval = setInterval(sendTelegramReminder, 5 * 60 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [company, user, getExpiryInfo, card, isLooker]);
+  }, [company, user, getExpiryInfo, card]);
 
-  // Looker bypasses subscription checks entirely
-  if (isLooker) return <>{children}</>;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

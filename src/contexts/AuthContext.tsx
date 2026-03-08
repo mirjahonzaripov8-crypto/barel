@@ -9,16 +9,15 @@ import { syncCompanyUsersToDb } from '@/lib/syncUsers';
 interface AuthState {
   isLoggedIn: boolean;
   isSuperAdmin: boolean;
-  isLooker: boolean;
+  isLooker: boolean; // kept for compatibility but always false
   user: { login: string; role: string; name: string; companyKey: string } | null;
   company: Company | null;
 }
 
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string) => { success: boolean; error?: string; isSuperAdmin?: boolean; isLooker?: boolean };
+  login: (username: string, password: string) => { success: boolean; error?: string; isSuperAdmin?: boolean };
   logout: () => void;
   refreshCompany: () => void;
-  setLookerCompany: (companyKey: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -41,24 +40,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.user]);
 
-  const setLookerCompany = useCallback((companyKey: string) => {
-    const company = getCompanyByKey(companyKey);
-    if (company) {
-      const userData = { login: '__looker__', role: 'BOSS', name: 'Kuzatuvchi', companyKey };
-      setCurrentUser(userData);
-      setCurrentCompanyKey(companyKey);
-      setState({ isLoggedIn: true, isSuperAdmin: false, isLooker: true, user: userData, company });
-    }
-  }, []);
 
   const login = useCallback((username: string, password: string) => {
     const result = authenticate(username, password);
     if (!result.success) {
       return { success: false, error: 'Login yoki parol noto\'g\'ri!' };
-    }
-    if (result.isLooker) {
-      setState({ isLoggedIn: true, isSuperAdmin: false, isLooker: true, user: { login: '__looker__', role: 'BOSS', name: 'Kuzatuvchi', companyKey: '' }, company: null });
-      return { success: true, isLooker: true };
     }
     if (result.isSuperAdmin) {
       setState({ isLoggedIn: true, isSuperAdmin: true, isLooker: false, user: { login: username, role: 'SUPERADMIN', name: 'Super Admin', companyKey: '' }, company: null });
@@ -82,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, refreshCompany, setLookerCompany }}>
+    <AuthContext.Provider value={{ ...state, login, logout, refreshCompany }}>
       {children}
     </AuthContext.Provider>
   );

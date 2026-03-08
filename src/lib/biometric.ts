@@ -133,6 +133,5 @@ export function hasBiometricRegistered(loginKey: string): boolean {
 export function getLoginKeyForCredentials(login: string): string | null {
   const upper = login.toUpperCase();
   if (upper === 'ZARIPOVM') return 'superadmin';
-  if (login === 'looker54789') return 'looker';
   return null;
 }

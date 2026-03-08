@@ -24,7 +24,7 @@ const allNavItems = [
 ];
 
 export default function DashboardLayout() {
-  const { user, company, logout, isLooker } = useAuth();
+  const { user, company, logout } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -32,9 +32,8 @@ export default function DashboardLayout() {
   const plan = (company?.plan || 'START') as PlanKey;
 
   // Filter nav items based on plan and role
-  const isOperator = user?.role === 'OPERATOR' && !isLooker;
+  const isOperator = user?.role === 'OPERATOR';
   const navItems = allNavItems.filter(item => {
-    if (isLooker) return true; // Looker sees everything
     if (!isRouteAllowed(plan, item.path)) return false;
     if (isOperator && item.path !== '/dashboard/meter') return false;
     return true;
@@ -42,7 +41,6 @@ export default function DashboardLayout() {
 
   // Redirect if trying to access restricted route
   useEffect(() => {
-    if (isLooker) return; // Looker bypasses all restrictions
     if (!isRouteAllowed(plan, location.pathname)) {
       navigate('/dashboard/meter');
       return;
@@ -50,11 +48,11 @@ export default function DashboardLayout() {
     if (isOperator && location.pathname !== '/dashboard/meter') {
       navigate('/dashboard/meter');
     }
-  }, [location.pathname, plan, navigate, isOperator, isLooker]);
+  }, [location.pathname, plan, navigate, isOperator]);
 
   const handleLogout = () => {
     logout();
-    navigate(isLooker ? '/looker' : '/');
+    navigate('/');
   };
   const isActive = (path: string) => location.pathname === path;
   const stationName = company?.stations?.[0] || company?.name || '';

@@ -839,7 +839,6 @@ function FaceIdSection() {
   const [loading, setLoading] = useState(false);
   const supported = isWebAuthnSupported();
   const superadminRegistered = hasBiometricRegistered('superadmin');
-  const lookerRegistered = hasBiometricRegistered('looker');
   const [, setRefresh] = useState(0);
 
   const handleRegister = async (loginKey: string, label: string) => {
@@ -904,11 +903,10 @@ function FaceIdSection() {
     <div className="animate-fade-in">
       <h1 className="text-2xl font-extrabold text-foreground mb-6">Face ID boshqaruv</h1>
       <p className="text-sm text-muted-foreground mb-6">
-        Maxfiy loginlar uchun Face ID / biometrik himoyani sozlang. Ro'yxatdan o'tkazilgandan so'ng, kirish uchun yuzingiz talab qilinadi.
+        Super Admin uchun Face ID / biometrik himoyani sozlang. Ro'yxatdan o'tkazilgandan so'ng, kirish uchun yuzingiz talab qilinadi.
       </p>
 
-      <div className="grid sm:grid-cols-2 gap-6 max-w-2xl">
-        {/* SuperAdmin */}
+      <div className="max-w-sm">
         <div className="bg-card border border-border rounded-xl p-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
@@ -940,46 +938,6 @@ function FaceIdSection() {
                 variant="outline"
                 className="w-full"
                 onClick={() => handleTest('superadmin', 'Super Admin')}
-                disabled={loading}
-              >
-                Test qilish
-              </Button>
-            )}
-          </div>
-        </div>
-
-        {/* Looker */}
-        <div className="bg-card border border-border rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-              <ScanFace className="h-6 w-6 text-primary" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-foreground">Kuzatuvchi</h3>
-              <p className="text-xs text-muted-foreground">looker54789 login</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-2 mb-4">
-            <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${
-              lookerRegistered ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
-            }`}>
-              {lookerRegistered ? '✅ Sozlangan' : '⚠️ Sozlanmagan'}
-            </span>
-          </div>
-          <div className="space-y-2">
-            <Button
-              className="w-full"
-              onClick={() => handleRegister('looker', 'Kuzatuvchi')}
-              disabled={loading}
-            >
-              <ScanFace className="h-4 w-4 mr-2" />
-              {lookerRegistered ? "Qayta sozlash" : "Face ID sozlash"}
-            </Button>
-            {lookerRegistered && (
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => handleTest('looker', 'Kuzatuvchi')}
                 disabled={loading}
               >
                 Test qilish
