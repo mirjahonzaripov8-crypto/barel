@@ -104,6 +104,7 @@ export default function MeterPage() {
 
       const totalSalesVal = fuels.reduce((s, f) => s + f.sold * f.price, 0);
       const totalExpVal = expenses.reduce((s, e) => s + e.amount, 0);
+      const naqdPul = totalSalesVal - terminal - totalExpVal;
 
       await supabase.functions.invoke('telegram-bot', {
         body: {
@@ -119,8 +120,10 @@ export default function MeterPage() {
             total: formatNumber(f.sold * f.price),
           })),
           total_sales: formatNumber(totalSalesVal),
+          terminal: formatNumber(terminal),
           total_expenses: formatNumber(totalExpVal),
           net_profit: formatNumber(totalSalesVal - totalExpVal),
+          naqd_pul: formatNumber(naqdPul),
         },
       });
     } catch (err) {
