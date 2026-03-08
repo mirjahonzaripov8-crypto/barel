@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, PlusCircle, Loader2 } from 'lucide-react';
+import { Bot, Send, Sparkles, PlusCircle, Loader2, Upload, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/lib/helpers';
-import { addFeatureRequest, getFeatureRequests, updateFeatureRequest, type FeatureRequest } from '@/lib/store';
+import { addFeatureRequest, getFeatureRequests, updateFeatureRequest, getAdminCard, addPayment, type FeatureRequest, type Payment } from '@/lib/store';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
 } from '@/components/ui/dialog';
