@@ -83,6 +83,12 @@ export default function SuperAdminPage() {
 
   const forceRefresh = () => setRefresh(r => r + 1);
 
+  // Auto-refresh every 5 seconds to pick up new payments/requests
+  useEffect(() => {
+    const interval = setInterval(() => setRefresh(r => r + 1), 5000);
+    return () => clearInterval(interval);
+  }, []);
+
   const requireSecurity = useCallback((action: () => void) => {
     setPendingAction(() => action);
     setSecurityPw('');
