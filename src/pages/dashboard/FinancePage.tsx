@@ -42,6 +42,40 @@ export default function FinancePage() {
     toast.success("Sozlamalar saqlandi!");
   };
 
+  const exportPdf = () => {
+    const doc = createPdf('MOLIYA VA TAHLIL', from, to);
+    let y = 36;
+
+    // Summary
+    doc.setFontSize(12);
+    doc.text('Umumiy ko\'rsatkichlar', 14, y);
+    y += 6;
+    y = addTable(doc, [['Ko\'rsatkich', 'Summa']], [
+      ['Tushum', formatNum(revenue) + ' so\'m'],
+      ['Xarajatlar', formatNum(Math.round(expenses)) + ' so\'m'],
+      ['Tannarx (prixod)', formatNum(costTotal) + ' so\'m'],
+      ['SOF FOYDA', formatNum(net) + ' so\'m'],
+    ], y);
+
+    y += 8;
+    doc.setFontSize(12);
+    doc.text('Kunlik tafsilot', 14, y);
+    y += 6;
+
+    const body = filtered.map(d => {
+      const rev = d.fuels.reduce((a, f) => a + f.sold * f.price, 0);
+      const exp = d.expenses.reduce((a, e) => a + e.amount, 0);
+      const cost = d.fuels.reduce((a, f) => a + (f.prixod || 0) * (f.tannarx || 0), 0);
+      return [d.date, formatNum(rev), formatNum(exp), formatNum(cost), formatNum(rev - exp - cost)];
+    });
+
+    y = addTable(doc, [['Sana', 'Tushum', 'Xarajat', 'Tannarx', 'Foyda']], body, y);
+    y = addSummaryRow(doc, 'JAMI SOF FOYDA:', formatNum(net) + ' so\'m', y);
+
+    downloadPdf(doc, `moliya_${from}_${to}.pdf`);
+    toast.success('PDF yuklandi!');
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">MOLIYA VA TAHLIL</h1>
