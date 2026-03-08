@@ -34,6 +34,9 @@ export default function WorkersPage() {
     }));
     addLog(company.key, user?.login || '', 'Ishchi', `${name} (${login}) qo'shildi`);
     refreshCompany();
+    // Sync to DB for telegram bot
+    const updated = getCompanyByKey(company.key);
+    if (updated) syncCompanyUsersToDb(updated);
     setLogin(''); setPassword(''); setName('');
     toast.success("Ishchi qo'shildi!");
   };
