@@ -27,10 +27,10 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn, isSuperAdmin, isLooker } = useAuth();
+  const { isLoggedIn, isSuperAdmin, isLooker, company } = useAuth();
   if (!isLoggedIn) return <Navigate to="/login" replace />;
   if (isSuperAdmin) return <Navigate to="/admin" replace />;
-  if (isLooker && !useAuth().company) return <Navigate to="/looker" replace />;
+  if (isLooker && !company) return <Navigate to="/looker" replace />;
   return <>{children}</>;
 }
 
@@ -47,9 +47,9 @@ function LookerRoute({ children }: { children: React.ReactNode }) {
 }
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn, isSuperAdmin, isLooker } = useAuth();
+  const { isLoggedIn, isSuperAdmin, isLooker, company } = useAuth();
   if (isLoggedIn && isSuperAdmin) return <Navigate to="/admin" replace />;
-  if (isLoggedIn && isLooker && !useAuth().company) return <Navigate to="/looker" replace />;
+  if (isLoggedIn && isLooker && !company) return <Navigate to="/looker" replace />;
   if (isLoggedIn) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
