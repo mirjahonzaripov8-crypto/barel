@@ -1,3 +1,5 @@
+import { getActiveFeaturesByPlan, getTestingFeaturesByPlan } from '@/lib/store';
+
 export function formatNumber(n: number): string {
   return n.toLocaleString('uz-UZ');
 }
@@ -182,4 +184,18 @@ export function getNavItemsForPlan(plan: PlanKey): readonly string[] {
   const planConfig = PLANS[plan];
   if (!planConfig) return PLANS.START.allowedRoutes;
   return planConfig.allowedRoutes;
+}
+
+// Get plan features merged with active custom features
+export function getPlanFeaturesWithCustom(plan: PlanKey): string[] {
+  const base: string[] = [...PLANS[plan].features];
+  const active = getActiveFeaturesByPlan(plan);
+  const testing = getTestingFeaturesByPlan(plan);
+  for (const f of active) {
+    base.push(`✨ ${f.title}`);
+  }
+  for (const f of testing) {
+    base.push(`🧪 ${f.title} (test)`);
+  }
+  return base;
 }
