@@ -150,7 +150,7 @@ export function hasPrioritySupport(plan: PlanKey): boolean {
 
 export function isRouteAllowed(plan: PlanKey, route: string): boolean {
   const planConfig = PLANS[plan];
-  if (!planConfig) return PLANS.START.allowedRoutes.includes(route);
+  if (!planConfig) return (PLANS.START.allowedRoutes as readonly string[]).includes(route);
   return (planConfig.allowedRoutes as readonly string[]).includes(route);
 }
 
