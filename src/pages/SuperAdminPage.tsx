@@ -86,7 +86,14 @@ export default function SuperAdminPage() {
   const [contactTelegramChannel, setContactTelegramChannel] = useState(() => getContacts().telegramChannel);
   const [contactInstagram, setContactInstagram] = useState(() => getContacts().instagram);
 
-  const companies = getCompanies();
+  // Feature management state
+  const [newFeatureTitle, setNewFeatureTitle] = useState('');
+  const [newFeatureDesc, setNewFeatureDesc] = useState('');
+  const [newFeaturePrompt, setNewFeaturePrompt] = useState('');
+  const [newFeaturePlan, setNewFeaturePlan] = useState<'START' | 'STANDART' | 'PREMIUM'>('STANDART');
+  const [editingFeature, setEditingFeature] = useState<CustomFeature | null>(null);
+  const [editPrompt, setEditPrompt] = useState('');
+
   const [payments, setPayments] = useState<any[]>([]);
   const featureRequests = getFeatureRequests();
   const pendingPayments = payments.filter((p: any) => p.status === 'pending');
