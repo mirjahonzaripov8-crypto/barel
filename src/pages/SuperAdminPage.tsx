@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features';
+type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card';
 
 function getStatusLabel(status: string) {
   switch (status) {
