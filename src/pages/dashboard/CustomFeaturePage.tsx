@@ -1,7 +1,21 @@
 import { useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCustomFeatures, getActiveFeaturesByPlan, getTestingFeaturesByPlan, type CustomFeature } from '@/lib/store';
+import { getActiveFeaturesByPlan, getTestingFeaturesByPlan, type CustomFeature } from '@/lib/store';
 import { Sparkles, Info } from 'lucide-react';
+import SafePage from './SafePage';
+
+// Registry: map feature title keywords to built components
+const BUILT_FEATURES: Record<string, React.ComponentType> = {
+  'seyf': SafePage,
+};
+
+function findBuiltComponent(feature: CustomFeature): React.ComponentType | null {
+  const titleLower = feature.title.toLowerCase();
+  for (const [keyword, Component] of Object.entries(BUILT_FEATURES)) {
+    if (titleLower.includes(keyword)) return Component;
+  }
+  return null;
+}
 
 export default function CustomFeaturePage() {
   const { featureId } = useParams<{ featureId: string }>();
@@ -24,6 +38,13 @@ export default function CustomFeaturePage() {
     );
   }
 
+  // Check if there's a built component for this feature
+  const BuiltComponent = findBuiltComponent(feature);
+  if (BuiltComponent) {
+    return <BuiltComponent />;
+  }
+
+  // Fallback: show feature info
   return (
     <div className="space-y-6">
       <div>
