@@ -26,7 +26,7 @@ export interface Company {
   phone: string;
   stations: string[];
   fuelTypes: FuelType[];
-  plan: 'START' | 'PRO' | 'PREMIUM';
+  plan: 'START' | 'STANDART' | 'PREMIUM';
   subscription: {
     status: 'trial' | 'active' | 'expired' | 'suspended';
     trial_end_date: string;
