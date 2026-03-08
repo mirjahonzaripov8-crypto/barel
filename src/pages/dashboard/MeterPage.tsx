@@ -148,6 +148,13 @@ export default function MeterPage() {
     addLog(company.key, user?.login || '', 'Hisoblagich', `${date} uchun ma'lumotlar saqlandi`);
     refreshCompany();
     setIsExistingRecord(true);
+
+    // "Oxirgi yangi" → "Oxirgi hisoblagich" ga o'tkazish (keyingi kiritish uchun)
+    setFuels(prev => prev.map(f => ({
+      ...f,
+      start: f.end > 0 ? f.end : f.start,
+    })));
+
     toast.success("Kunlik ma'lumotlar saqlandi!");
 
     // Send TG notification
