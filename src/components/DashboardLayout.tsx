@@ -34,11 +34,25 @@ export default function DashboardLayout() {
 
   // Filter nav items based on plan and role
   const isOperator = user?.role === 'OPERATOR';
-  const navItems = allNavItems.filter(item => {
-    if (!isRouteAllowed(plan, item.path)) return false;
-    if (isOperator && item.path !== '/dashboard/meter') return false;
-    return true;
-  });
+  
+  // Get custom features for this plan
+  const customFeatureItems = [
+    ...getActiveFeaturesByPlan(plan),
+    ...getTestingFeaturesByPlan(plan),
+  ].map(cf => ({
+    path: `/dashboard/feature/${cf.id}`,
+    icon: Sparkles,
+    label: cf.status === 'testing' ? `🧪 ${cf.title}` : `✨ ${cf.title}`,
+  }));
+
+  const navItems = [
+    ...allNavItems.filter(item => {
+      if (!isRouteAllowed(plan, item.path)) return false;
+      if (isOperator && item.path !== '/dashboard/meter') return false;
+      return true;
+    }),
+    ...(isOperator ? [] : customFeatureItems),
+  ];
 
   // Redirect if trying to access restricted route
   useEffect(() => {

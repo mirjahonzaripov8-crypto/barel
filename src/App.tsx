@@ -72,6 +72,7 @@ const App: React.FC = () => (
               <Route path="security" element={<SecurityPage />} />
               <Route path="ai" element={<AIAssistantPage />} />
               <Route path="telegram" element={<TelegramPage />} />
+              <Route path="feature/:featureId" element={<CustomFeaturePage />} />
             </Route>
             <Route path="/admin" element={<AdminRoute><SuperAdminPage /></AdminRoute>} />
             <Route path="/admin/company/:key" element={<AdminRoute><CompanyViewPage /></AdminRoute>} />
