@@ -45,9 +45,32 @@ export function getMonthAgoStr(): string {
 }
 
 export const PLANS = {
-  START: { name: 'START', price: 399000, features: ['1 ta zapravka', 'Kunlik hisoblagich', 'Moliya', 'Arxiv'] },
-  PRO: { name: 'PRO', price: 599000, features: ['3 ta zapravka', 'Barcha START imkoniyatlari', 'Xodimlar boshqaruvi', 'PDF eksport', 'Plomba nazorati'] },
-  PREMIUM: { name: 'PREMIUM', price: 899000, features: ['Cheksiz zapravka', 'Barcha PRO imkoniyatlari', 'AI yordamchi', 'Referral tizimi', 'Prioritet yordam'] },
+  START: { 
+    name: 'START', 
+    price: 399000, 
+    features: ['1 ta zapravka', 'Kunlik hisoblagich', 'Moliya', 'Arxiv'],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/security']
+  },
+  PRO: { 
+    name: 'PRO', 
+    price: 599000, 
+    features: ['3 ta zapravka', 'Barcha START imkoniyatlari', 'Xodimlar boshqaruvi', 'PDF eksport', 'Plomba nazorati'],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/security']
+  },
+  PREMIUM: { 
+    name: 'PREMIUM', 
+    price: 899000, 
+    features: ['Cheksiz zapravka', 'Barcha PRO imkoniyatlari', 'AI yordamchi', 'Referral tizimi', 'Prioritet yordam'],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/referrals', '/dashboard/security', '/dashboard/ai']
+  },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;
+
+export function isRouteAllowed(plan: PlanKey, route: string): boolean {
+  return (PLANS[plan].allowedRoutes as readonly string[]).includes(route);
+}
+
+export function getNavItemsForPlan(plan: PlanKey): readonly string[] {
+  return PLANS[plan].allowedRoutes;
+}
