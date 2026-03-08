@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTodayStr, formatCurrency, formatNumber } from '@/lib/helpers';
-import { updateCompany, addLog } from '@/lib/store';
+import { updateCompany, addLog, getStationFuelTypes, getCurrentStation } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
