@@ -974,6 +974,54 @@ export default function SuperAdminPage() {
                 </DialogContent>
               </Dialog>
             )}
+
+            {/* Demo credentials dialog */}
+            <Dialog open={demoDialogOpen} onOpenChange={setDemoDialogOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Play className="h-5 w-5 text-primary" /> Demo test tayyor!
+                  </DialogTitle>
+                  <DialogDescription>
+                    "{demoFeatureTitle}" funksiyasini test qilish uchun demo akkaunt yaratildi.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="bg-secondary/50 rounded-lg p-4 space-y-3">
+                    <p className="text-sm font-medium text-foreground">Demo kirish ma'lumotlari:</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Login</p>
+                        <p className="text-lg font-bold text-primary font-mono">demo</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Parol</p>
+                        <p className="text-lg font-bold text-primary font-mono">demo</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
+                    <p className="text-xs text-warning font-medium">⚠️ Qanday test qilish:</p>
+                    <ol className="text-xs text-muted-foreground mt-1 space-y-1 list-decimal list-inside">
+                      <li>Hozirgi sahifadan chiqing (Chiqish tugmasi)</li>
+                      <li>Login: <b>demo</b>, Parol: <b>demo</b> bilan kiring</li>
+                      <li>Funksiyani tekshiring</li>
+                      <li>Qayta SuperAdmin ga kiring va tasdiqlang yoki rad eting</li>
+                    </ol>
+                  </div>
+                </div>
+                <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setDemoDialogOpen(false)}>Yopish</Button>
+                  <Button onClick={() => {
+                    setDemoDialogOpen(false);
+                    logout();
+                    navigate('/login');
+                  }}>
+                    <LogOut className="h-4 w-4 mr-2" /> Demo ga o'tish
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </main>
