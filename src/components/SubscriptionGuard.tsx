@@ -39,7 +39,7 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
   }, [company]);
 
   useEffect(() => {
-    if (!company || isLooker) return;
+    if (!company) return;
     const info = getExpiryInfo();
     if (!info.locked) return;
 
