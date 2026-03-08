@@ -56,7 +56,8 @@ export default function DashboardLayout() {
 
   // Redirect if trying to access restricted route
   useEffect(() => {
-    if (!isRouteAllowed(plan, location.pathname)) {
+    const isCustomFeatureRoute = location.pathname.startsWith('/dashboard/feature/');
+    if (!isCustomFeatureRoute && !isRouteAllowed(plan, location.pathname)) {
       navigate('/dashboard/meter');
       return;
     }

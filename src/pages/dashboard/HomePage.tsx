@@ -1,8 +1,9 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatNumber } from '@/lib/helpers';
-import { getStationFuelTypes, getCurrentStation } from '@/lib/store';
-import { Fuel, BarChart3 } from 'lucide-react';
+import { getStationFuelTypes, getCurrentStation, getActiveFeaturesByPlan, getTestingFeaturesByPlan } from '@/lib/store';
+import { Fuel, BarChart3, Sparkles } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 
 export default function HomePage() {
   const { company } = useAuth();
