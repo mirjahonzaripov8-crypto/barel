@@ -21,6 +21,7 @@ const features = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const contacts = getContacts();
 
   return (
     <div className="min-h-screen bg-card">
