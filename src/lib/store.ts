@@ -103,6 +103,20 @@ export interface AdminCardInfo {
   cardHolder: string;
 }
 
+export interface ContactInfo {
+  phone: string;
+  telegramBot: string;
+  telegramChannel: string;
+  instagram: string;
+}
+
+const DEFAULT_CONTACTS: ContactInfo = {
+  phone: '+998997771702',
+  telegramBot: '@Barel_uz_bot',
+  telegramChannel: 'https://t.me/BAREL_UZ',
+  instagram: 'https://www.instagram.com/barel.uz?igsh=MzJsdDR3NDJ1bGpq&utm_source=qr',
+};
+
 const STORAGE_KEYS = {
   COMPANIES: 'barel_companies',
   CURRENT_COMPANY: 'barel_current_company',
@@ -111,6 +125,7 @@ const STORAGE_KEYS = {
   PAYMENTS: 'barel_payments',
   FEATURE_REQUESTS: 'barel_feature_requests',
   ADMIN_CARD: 'barel_admin_card',
+  ADMIN_CONTACTS: 'barel_admin_contacts',
   SUPERADMIN_KEY: 'ZARIPOVM',
   SUPERADMIN_PASSWORD: '201116ZM',
 };
@@ -121,6 +136,14 @@ export function getAdminCard(): AdminCardInfo {
 }
 export function saveAdminCard(card: AdminCardInfo) {
   saveJSON(STORAGE_KEYS.ADMIN_CARD, card);
+}
+
+// Contact info
+export function getContacts(): ContactInfo {
+  return loadJSON(STORAGE_KEYS.ADMIN_CONTACTS, DEFAULT_CONTACTS);
+}
+export function saveContacts(contacts: ContactInfo) {
+  saveJSON(STORAGE_KEYS.ADMIN_CONTACTS, contacts);
 }
 
 function loadJSON<T>(key: string, fallback: T): T {

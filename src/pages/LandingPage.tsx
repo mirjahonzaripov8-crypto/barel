@@ -1,7 +1,8 @@
-import { Fuel, BarChart3, Shield, Clock, Users, FileText, Zap, Award, ChevronRight, Check, Phone, MapPin } from 'lucide-react';
+import { Fuel, BarChart3, Shield, Clock, Users, FileText, Zap, Award, ChevronRight, Check, Phone, MapPin, Send, Instagram } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { PLANS, type PlanKey } from '@/lib/helpers';
+import { getContacts } from '@/lib/store';
 
 const steps = [
   { num: 1, title: "Ro'yxatdan o'ting", desc: "Korxona ma'lumotlarini kiriting va 7 kunlik bepul sinovdan foydalaning." },
@@ -20,6 +21,7 @@ const features = [
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  const contacts = getContacts();
 
   return (
     <div className="min-h-screen bg-card">
@@ -134,9 +136,23 @@ export default function LandingPage() {
       <section id="contact" className="bg-secondary/30 py-16">
         <div className="container mx-auto px-4 text-center">
           <h2 className="text-2xl md:text-3xl font-bold text-foreground mb-6">Bog'lanish</h2>
-          <div className="inline-flex items-center gap-3 bg-card border border-secondary rounded-lg px-6 py-4">
-            <Phone className="h-5 w-5 text-brand-deep" />
-            <a href="tel:+998911234567" className="text-lg font-semibold text-brand-deep hover:underline">+998 91 123 45 67</a>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <a href={`tel:${contacts.phone}`} className="inline-flex items-center gap-3 bg-card border border-secondary rounded-lg px-6 py-4 hover:border-primary/30 hover:shadow-md transition-all">
+              <Phone className="h-5 w-5 text-primary" />
+              <span className="text-lg font-semibold text-foreground">{contacts.phone}</span>
+            </a>
+            <a href={`https://t.me/${contacts.telegramBot.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 bg-card border border-secondary rounded-lg px-6 py-4 hover:border-primary/30 hover:shadow-md transition-all">
+              <Send className="h-5 w-5 text-primary" />
+              <span className="text-lg font-semibold text-foreground">{contacts.telegramBot}</span>
+            </a>
+            <a href={contacts.telegramChannel} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 bg-card border border-secondary rounded-lg px-6 py-4 hover:border-primary/30 hover:shadow-md transition-all">
+              <Send className="h-5 w-5 text-primary" />
+              <span className="text-lg font-semibold text-foreground">Telegram kanal</span>
+            </a>
+            <a href={contacts.instagram} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-3 bg-card border border-secondary rounded-lg px-6 py-4 hover:border-primary/30 hover:shadow-md transition-all">
+              <Instagram className="h-5 w-5 text-primary" />
+              <span className="text-lg font-semibold text-foreground">Instagram</span>
+            </a>
           </div>
         </div>
       </section>
