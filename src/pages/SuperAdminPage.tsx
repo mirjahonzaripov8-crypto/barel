@@ -20,7 +20,7 @@ import {
   hasBiometricRegistered
 } from '@/lib/biometric';
 
-type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card';
+type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card' | 'faceid';
 
 function getStatusLabel(status: string) {
   switch (status) {
