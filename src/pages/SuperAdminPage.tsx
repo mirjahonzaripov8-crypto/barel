@@ -79,6 +79,12 @@ export default function SuperAdminPage() {
   const [cardNumber, setCardNumber] = useState(() => getAdminCard().cardNumber);
   const [cardHolder, setCardHolder] = useState(() => getAdminCard().cardHolder);
 
+  // Contact info
+  const [contactPhone, setContactPhone] = useState(() => getContacts().phone);
+  const [contactTelegramBot, setContactTelegramBot] = useState(() => getContacts().telegramBot);
+  const [contactTelegramChannel, setContactTelegramChannel] = useState(() => getContacts().telegramChannel);
+  const [contactInstagram, setContactInstagram] = useState(() => getContacts().instagram);
+
   const companies = getCompanies();
   const [payments, setPayments] = useState<any[]>([]);
   const featureRequests = getFeatureRequests();
