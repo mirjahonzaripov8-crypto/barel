@@ -178,6 +178,27 @@ export function addPayment(payment: Payment) {
   savePayments(payments);
 }
 
+// Feature Requests
+export function getFeatureRequests(): FeatureRequest[] {
+  return loadJSON(STORAGE_KEYS.FEATURE_REQUESTS, []);
+}
+export function saveFeatureRequests(requests: FeatureRequest[]) {
+  saveJSON(STORAGE_KEYS.FEATURE_REQUESTS, requests);
+}
+export function addFeatureRequest(request: FeatureRequest) {
+  const requests = getFeatureRequests();
+  requests.push(request);
+  saveFeatureRequests(requests);
+}
+export function updateFeatureRequest(id: string, updater: (r: FeatureRequest) => FeatureRequest) {
+  const requests = getFeatureRequests();
+  const idx = requests.findIndex(r => r.id === id);
+  if (idx >= 0) {
+    requests[idx] = updater(requests[idx]);
+    saveFeatureRequests(requests);
+  }
+}
+
 // Auth
 export function authenticate(login: string, password: string): { success: boolean; isSuperAdmin?: boolean; user?: CompanyUser; companyKey?: string } {
   if (login.toUpperCase() === STORAGE_KEYS.SUPERADMIN_KEY && password === STORAGE_KEYS.SUPERADMIN_PASSWORD) {
