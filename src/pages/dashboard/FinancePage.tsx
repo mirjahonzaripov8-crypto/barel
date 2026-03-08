@@ -4,10 +4,11 @@ import { formatCurrency, getMonthAgoStr, getTodayStr, isInRange } from '@/lib/he
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, FileDown } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { updateCompany } from '@/lib/store';
 import { toast } from 'sonner';
+import { createPdf, addTable, addSummaryRow, downloadPdf, formatNum } from '@/lib/pdf';
 
 const COLORS = ['#2563EB', '#16a34a', '#d97706', '#dc2626', '#8b5cf6'];
 
