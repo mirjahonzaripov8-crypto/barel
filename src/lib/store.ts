@@ -110,6 +110,20 @@ export interface ContactInfo {
   instagram: string;
 }
 
+export interface CustomFeature {
+  id: string;
+  title: string;
+  description: string;
+  prompt: string;
+  targetPlan: 'START' | 'STANDART' | 'PREMIUM';
+  status: 'draft' | 'testing' | 'active' | 'rejected';
+  fromRequestId?: string; // linked feature request id
+  created_at: string;
+  updated_at: string;
+  testedAt?: string;
+  deployedAt?: string;
+}
+
 const DEFAULT_CONTACTS: ContactInfo = {
   phone: '+998997771702',
   telegramBot: '@Barel_uz_bot',
@@ -126,6 +140,7 @@ const STORAGE_KEYS = {
   FEATURE_REQUESTS: 'barel_feature_requests',
   ADMIN_CARD: 'barel_admin_card',
   ADMIN_CONTACTS: 'barel_admin_contacts',
+  CUSTOM_FEATURES: 'barel_custom_features',
   SUPERADMIN_KEY: 'ZARIPOVM',
   SUPERADMIN_PASSWORD: '201116ZM',
 };
@@ -144,6 +159,30 @@ export function getContacts(): ContactInfo {
 }
 export function saveContacts(contacts: ContactInfo) {
   saveJSON(STORAGE_KEYS.ADMIN_CONTACTS, contacts);
+}
+
+// Custom features
+export function getCustomFeatures(): CustomFeature[] {
+  return loadJSON(STORAGE_KEYS.CUSTOM_FEATURES, []);
+}
+export function saveCustomFeatures(features: CustomFeature[]) {
+  saveJSON(STORAGE_KEYS.CUSTOM_FEATURES, features);
+}
+export function addCustomFeature(feature: CustomFeature) {
+  const all = getCustomFeatures();
+  all.push(feature);
+  saveCustomFeatures(all);
+}
+export function updateCustomFeature(id: string, updater: (f: CustomFeature) => CustomFeature) {
+  const all = getCustomFeatures();
+  const idx = all.findIndex(f => f.id === id);
+  if (idx >= 0) {
+    all[idx] = updater(all[idx]);
+    saveCustomFeatures(all);
+  }
+}
+export function getActiveFeaturesByPlan(plan: 'START' | 'STANDART' | 'PREMIUM'): CustomFeature[] {
+  return getCustomFeatures().filter(f => f.status === 'active' && f.targetPlan === plan);
 }
 
 function loadJSON<T>(key: string, fallback: T): T {

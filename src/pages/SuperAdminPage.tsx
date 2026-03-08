@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCompanies, saveCompanies, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, getContacts, saveContacts, type Company, type FeatureRequest } from '@/lib/store';
+import { getCompanies, saveCompanies, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, getContacts, saveContacts, getCustomFeatures, addCustomFeature, updateCustomFeature, type Company, type FeatureRequest, type CustomFeature } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatDate, formatNumber, PLANS, type PlanKey } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import {
   Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle,
-  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet, ScanFace, Phone, Instagram
+  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet, ScanFace, Phone, Instagram, 
+  Settings, Play, Rocket, RotateCcw, Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -20,7 +21,7 @@ import {
   hasBiometricRegistered, isInIframe
 } from '@/lib/biometric';
 
-type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card' | 'faceid' | 'contacts';
+type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card' | 'faceid' | 'contacts' | 'featuremgmt';
 
 function getStatusLabel(status: string) {
   switch (status) {
@@ -85,7 +86,16 @@ export default function SuperAdminPage() {
   const [contactTelegramChannel, setContactTelegramChannel] = useState(() => getContacts().telegramChannel);
   const [contactInstagram, setContactInstagram] = useState(() => getContacts().instagram);
 
+  // Feature management state
+  const [newFeatureTitle, setNewFeatureTitle] = useState('');
+  const [newFeatureDesc, setNewFeatureDesc] = useState('');
+  const [newFeaturePrompt, setNewFeaturePrompt] = useState('');
+  const [newFeaturePlan, setNewFeaturePlan] = useState<'START' | 'STANDART' | 'PREMIUM'>('STANDART');
+  const [editingFeature, setEditingFeature] = useState<CustomFeature | null>(null);
+  const [editPrompt, setEditPrompt] = useState('');
+
   const companies = getCompanies();
+  const customFeatures = getCustomFeatures();
   const [payments, setPayments] = useState<any[]>([]);
   const featureRequests = getFeatureRequests();
   const pendingPayments = payments.filter((p: any) => p.status === 'pending');
@@ -285,7 +295,21 @@ export default function SuperAdminPage() {
         };
         saveFeatureRequests(reqs);
       }
-      toast.success("Funksiya bajarildi deb belgilandi!");
+      // Also create a CustomFeature for tracking
+      const company = companies.find(c => c.key === selectedFeature!.companyKey);
+      addCustomFeature({
+        id: `cf_${Date.now()}`,
+        title: selectedFeature!.description.slice(0, 60),
+        description: `${selectedFeature!.companyName} so'rovi`,
+        prompt: featurePrompt.trim(),
+        targetPlan: (company?.plan as any) || 'STANDART',
+        status: 'testing',
+        fromRequestId: selectedFeature!.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        testedAt: new Date().toISOString(),
+      });
+      toast.success("Funksiya 'Funksiya boshqaruvi' bo'limida test uchun qo'shildi!");
       setFeaturePromptOpen(false);
       forceRefresh();
     });
@@ -313,6 +337,7 @@ export default function SuperAdminPage() {
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Xabarlar' },
     { id: 'faceid' as Tab, icon: ScanFace, label: 'Face ID' },
     { id: 'contacts' as Tab, icon: Phone, label: 'Kontaktlar' },
+    { id: 'featuremgmt' as Tab, icon: Layers, label: 'Funksiya boshqaruvi' },
   ];
 
   const getFeatureStatusBadge = (status: FeatureRequest['status']) => {
@@ -693,6 +718,246 @@ export default function SuperAdminPage() {
                 Saqlash
               </Button>
             </div>
+          </div>
+        )}
+
+        {/* FEATURE MANAGEMENT */}
+        {tab === 'featuremgmt' && (
+          <div className="animate-fade-in">
+            <h1 className="text-2xl font-extrabold text-foreground mb-6">Funksiya boshqaruvi</h1>
+            <p className="text-sm text-muted-foreground mb-6">
+              Tariflarga yangi funksiyalar qo'shing. Prompt yozing → demo test qiling → tasdiqlang → foydalanuvchilarga yetkaziladi.
+            </p>
+
+            {/* New feature form */}
+            <div className="bg-card border border-border rounded-xl p-6 mb-8 max-w-2xl">
+              <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Plus className="h-4 w-4 text-primary" /> Yangi funksiya qo'shish
+              </h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-1.5 block">Funksiya nomi</label>
+                    <Input value={newFeatureTitle} onChange={e => setNewFeatureTitle(e.target.value)} placeholder="Masalan: Excel eksport" />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-foreground mb-1.5 block">Qaysi tarifga</label>
+                    <select
+                      value={newFeaturePlan}
+                      onChange={e => setNewFeaturePlan(e.target.value as any)}
+                      className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    >
+                      <option value="START">Boshlang'ich</option>
+                      <option value="STANDART">Standart</option>
+                      <option value="PREMIUM">Premium</option>
+                    </select>
+                  </div>
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Qisqacha tavsif</label>
+                  <Input value={newFeatureDesc} onChange={e => setNewFeatureDesc(e.target.value)} placeholder="Bu funksiya nima qiladi..." />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-foreground mb-1.5 block">Prompt (batafsil ko'rsatma)</label>
+                  <Textarea
+                    value={newFeaturePrompt}
+                    onChange={e => setNewFeaturePrompt(e.target.value)}
+                    placeholder="Funksiyani amalga oshirish uchun batafsil prompt yozing..."
+                    rows={5}
+                  />
+                </div>
+                <Button onClick={() => {
+                  if (!newFeatureTitle.trim() || !newFeaturePrompt.trim()) {
+                    toast.error("Nom va prompt kiritilishi shart!");
+                    return;
+                  }
+                  addCustomFeature({
+                    id: `cf_${Date.now()}`,
+                    title: newFeatureTitle.trim(),
+                    description: newFeatureDesc.trim(),
+                    prompt: newFeaturePrompt.trim(),
+                    targetPlan: newFeaturePlan,
+                    status: 'draft',
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString(),
+                  });
+                  setNewFeatureTitle('');
+                  setNewFeatureDesc('');
+                  setNewFeaturePrompt('');
+                  toast.success("Funksiya qo'shildi! Endi test qiling.");
+                  forceRefresh();
+                }} className="w-full">
+                  <Plus className="h-4 w-4 mr-2" /> Funksiya yaratish (Draft)
+                </Button>
+              </div>
+            </div>
+
+            {/* Feature list */}
+            <h2 className="font-semibold text-foreground mb-4">Barcha funksiyalar</h2>
+            {customFeatures.length === 0 ? (
+              <div className="bg-card border border-border rounded-xl p-8 text-center text-muted-foreground">
+                Hozircha funksiya qo'shilmagan
+              </div>
+            ) : (
+              <div className="space-y-4 max-w-2xl">
+                {[...customFeatures].reverse().map(cf => (
+                  <div key={cf.id} className="bg-card border border-border rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-foreground text-sm">{cf.title}</span>
+                          <span className={`text-xs px-2.5 py-0.5 rounded-md font-medium ${
+                            cf.status === 'draft' ? 'bg-muted text-muted-foreground' :
+                            cf.status === 'testing' ? 'bg-warning/10 text-warning' :
+                            cf.status === 'active' ? 'bg-success/10 text-success' :
+                            'bg-destructive/10 text-destructive'
+                          }`}>
+                            {cf.status === 'draft' ? '📝 Qoralama' :
+                             cf.status === 'testing' ? '🧪 Test' :
+                             cf.status === 'active' ? '✅ Faol' : '❌ Rad'}
+                          </span>
+                          <span className="text-xs bg-secondary text-secondary-foreground px-2 py-0.5 rounded-md">
+                            {PLANS[cf.targetPlan]?.name || cf.targetPlan}
+                          </span>
+                        </div>
+                        {cf.description && <p className="text-xs text-muted-foreground">{cf.description}</p>}
+                      </div>
+                    </div>
+
+                    {/* Prompt */}
+                    <div className="bg-secondary/50 rounded-lg p-3 mb-3">
+                      <p className="text-xs text-muted-foreground mb-1">Prompt:</p>
+                      <p className="text-sm text-foreground whitespace-pre-wrap">{cf.prompt}</p>
+                    </div>
+
+                    {/* Timestamps */}
+                    <div className="flex gap-4 text-xs text-muted-foreground mb-3">
+                      <span>Yaratilgan: {new Date(cf.created_at).toLocaleDateString('uz-UZ')}</span>
+                      {cf.testedAt && <span>Test: {new Date(cf.testedAt).toLocaleDateString('uz-UZ')}</span>}
+                      {cf.deployedAt && <span>Deploy: {new Date(cf.deployedAt).toLocaleDateString('uz-UZ')}</span>}
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 flex-wrap">
+                      {cf.status === 'draft' && (
+                        <>
+                          <Button size="sm" variant="outline" onClick={() => {
+                            setEditingFeature(cf);
+                            setEditPrompt(cf.prompt);
+                          }}>
+                            <Settings className="h-3 w-3 mr-1" /> Tahrirlash
+                          </Button>
+                          <Button size="sm" onClick={() => {
+                            requireSecurity(() => {
+                              updateCustomFeature(cf.id, f => ({
+                                ...f,
+                                status: 'testing',
+                                testedAt: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                              }));
+                              toast.success("Demo test boshlandi! Funksiyani tekshiring.");
+                              forceRefresh();
+                            });
+                          }}>
+                            <Play className="h-3 w-3 mr-1" /> Demo test
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => {
+                            updateCustomFeature(cf.id, f => ({
+                              ...f, status: 'rejected', updated_at: new Date().toISOString()
+                            }));
+                            toast.success("Funksiya rad etildi.");
+                            forceRefresh();
+                          }}>
+                            <X className="h-3 w-3 mr-1" /> O'chirish
+                          </Button>
+                        </>
+                      )}
+                      {cf.status === 'testing' && (
+                        <>
+                          <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => {
+                            requireSecurity(() => {
+                              updateCustomFeature(cf.id, f => ({
+                                ...f,
+                                status: 'active',
+                                deployedAt: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                              }));
+                              toast.success(`"${cf.title}" funksiyasi ${PLANS[cf.targetPlan].name} tarifiga qo'shildi! ✅`);
+                              forceRefresh();
+                            });
+                          }}>
+                            <Rocket className="h-3 w-3 mr-1" /> Tasdiqlash va deploy
+                          </Button>
+                          <Button size="sm" variant="outline" onClick={() => {
+                            updateCustomFeature(cf.id, f => ({
+                              ...f, status: 'draft', updated_at: new Date().toISOString()
+                            }));
+                            toast.info("Qayta qoralamaga qaytarildi.");
+                            forceRefresh();
+                          }}>
+                            <RotateCcw className="h-3 w-3 mr-1" /> Qayta ishlash
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => {
+                            updateCustomFeature(cf.id, f => ({
+                              ...f, status: 'rejected', updated_at: new Date().toISOString()
+                            }));
+                            toast.success("Funksiya rad etildi.");
+                            forceRefresh();
+                          }}>
+                            <X className="h-3 w-3 mr-1" /> Rad etish
+                          </Button>
+                        </>
+                      )}
+                      {cf.status === 'active' && (
+                        <Button size="sm" variant="outline" onClick={() => {
+                          requireSecurity(() => {
+                            updateCustomFeature(cf.id, f => ({
+                              ...f, status: 'draft', deployedAt: undefined, updated_at: new Date().toISOString()
+                            }));
+                            toast.info("Funksiya olib tashlandi va qoralamaga qaytarildi.");
+                            forceRefresh();
+                          });
+                        }}>
+                          <RotateCcw className="h-3 w-3 mr-1" /> Olib tashlash
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Edit prompt dialog */}
+            {editingFeature && (
+              <Dialog open={!!editingFeature} onOpenChange={() => setEditingFeature(null)}>
+                <DialogContent className="sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Promptni tahrirlash</DialogTitle>
+                    <DialogDescription>{editingFeature.title}</DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <Textarea
+                      value={editPrompt}
+                      onChange={e => setEditPrompt(e.target.value)}
+                      rows={8}
+                      placeholder="Yangi prompt..."
+                    />
+                  </div>
+                  <DialogFooter className="gap-2">
+                    <Button variant="outline" onClick={() => setEditingFeature(null)}>Bekor</Button>
+                    <Button onClick={() => {
+                      if (!editPrompt.trim()) { toast.error("Prompt bo'sh!"); return; }
+                      updateCustomFeature(editingFeature.id, f => ({
+                        ...f, prompt: editPrompt.trim(), updated_at: new Date().toISOString()
+                      }));
+                      toast.success("Prompt yangilandi!");
+                      setEditingFeature(null);
+                      forceRefresh();
+                    }}>Saqlash</Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
         )}
       </main>
