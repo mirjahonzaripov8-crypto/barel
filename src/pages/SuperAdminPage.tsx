@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCompanies, saveCompanies, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, type Company, type FeatureRequest } from '@/lib/store';
+import { getCompanies, saveCompanies, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, getContacts, saveContacts, type Company, type FeatureRequest } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatDate, formatNumber, PLANS, type PlanKey } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
