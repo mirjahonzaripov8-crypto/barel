@@ -204,6 +204,9 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
             </DialogTitle>
             <DialogDescription>
               Obuna muddatingiz tugagan. 2 kun ichida to'lovni amalga oshirmasangiz, tizim to'liq bloklanadi.
+              {planPrice > 0 && (
+                <span className="block mt-1 font-semibold text-primary">To'lov summasi: {formatCurrency(planPrice)}</span>
+              )}
             </DialogDescription>
           </DialogHeader>
 
