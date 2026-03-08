@@ -17,6 +17,12 @@ export default function MeterPage() {
   const [expenses, setExpenses] = useState<{ reason: string; amount: number }[]>([]);
   const [terminal, setTerminal] = useState(0);
   const [isExistingRecord, setIsExistingRecord] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  const isOperator = user?.role === 'OPERATOR';
+
+  // Check if 30-min edit window expired for operators
+  const isEditExpired = isOperator && savedAt && (Date.now() - new Date(savedAt).getTime() > 30 * 60 * 1000);
 
   // Get the latest end value for a fuel type from all saved data (up to but not including current date)
   const getPreviousEnd = useCallback((fuelType: string, beforeDate: string): number => {
