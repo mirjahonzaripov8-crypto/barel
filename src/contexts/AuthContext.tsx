@@ -9,7 +9,7 @@ import { syncCompanyUsersToDb } from '@/lib/syncUsers';
 interface AuthState {
   isLoggedIn: boolean;
   isSuperAdmin: boolean;
-  isLooker: boolean;
+  isLooker: boolean; // kept for compatibility but always false
   user: { login: string; role: string; name: string; companyKey: string } | null;
   company: Company | null;
 }
