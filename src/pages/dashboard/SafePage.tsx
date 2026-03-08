@@ -34,11 +34,20 @@ function saveSafeTransactions(companyKey: string, txs: SafeTransaction[]) {
 
 export default function SafePage() {
   const { company, user } = useAuth();
-  if (!company || !user) return null;
+  const [transactions, setTransactions] = useState<SafeTransaction[]>([]);
+  const [addOpen, setAddOpen] = useState(false);
+  const [withdrawOpen, setWithdrawOpen] = useState(false);
+  const [amount, setAmount] = useState('');
+  const [reason, setReason] = useState('');
+  const [personName, setPersonName] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
-  const [transactions, setTransactions] = useState<SafeTransaction[]>(() =>
-    getSafeTransactions(company.key)
-  );
+  useState(() => {
+    if (company) setTransactions(getSafeTransactions(company.key));
+  });
+
+  if (!company || !user) return null;
   const [addOpen, setAddOpen] = useState(false);
   const [withdrawOpen, setWithdrawOpen] = useState(false);
   const [amount, setAmount] = useState('');
