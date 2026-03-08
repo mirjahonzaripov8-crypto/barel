@@ -12,9 +12,13 @@ import {
 } from '@/components/ui/dialog';
 import {
   Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle,
-  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet
+  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet, ScanFace
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  isWebAuthnSupported, registerBiometric, verifyBiometric,
+  hasBiometricRegistered
+} from '@/lib/biometric';
 
 type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card';
 
