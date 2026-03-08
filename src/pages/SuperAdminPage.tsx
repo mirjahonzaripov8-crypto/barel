@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCompanies, saveCompanies, getPayments, savePayments, type Company, type Payment } from '@/lib/store';
+import { getCompanies, saveCompanies, getPayments, savePayments, getFeatureRequests, saveFeatureRequests, type Company, type Payment, type FeatureRequest } from '@/lib/store';
 import { formatCurrency, formatDate, formatNumber, PLANS, type PlanKey } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,11 @@ import {
 } from '@/components/ui/dialog';
 import {
   Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle,
-  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText
+  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Tab = 'home' | 'companies' | 'payments' | 'messages';
+type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features';
 
 function getStatusLabel(status: string) {
   switch (status) {
@@ -62,9 +62,19 @@ export default function SuperAdminPage() {
   const [useCustomDate, setUseCustomDate] = useState(false);
   const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
 
+  // Feature request modals
+  const [featureResponseOpen, setFeatureResponseOpen] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState<FeatureRequest | null>(null);
+  const [featureAdminResponse, setFeatureAdminResponse] = useState('');
+  const [featurePrice, setFeaturePrice] = useState('');
+  const [featurePromptOpen, setFeaturePromptOpen] = useState(false);
+  const [featurePrompt, setFeaturePrompt] = useState('');
+
   const companies = getCompanies();
   const payments = getPayments();
+  const featureRequests = getFeatureRequests();
   const pendingPayments = payments.filter(p => p.status === 'pending');
+  const pendingFeatures = featureRequests.filter(f => f.status === 'pending' || f.status === 'paid');
   const activeCount = companies.filter(c => c.subscription.status === 'active' || c.subscription.status === 'trial').length;
 
   const forceRefresh = () => setRefresh(r => r + 1);
@@ -192,12 +202,97 @@ export default function SuperAdminPage() {
     navigate(`/admin/company/${key}`);
   };
 
+  // Feature request handlers
+  const openFeatureResponse = (feature: FeatureRequest) => {
+    setSelectedFeature(feature);
+    setFeatureAdminResponse(feature.adminResponse || '');
+    setFeaturePrice(feature.price ? String(feature.price) : '');
+    setFeatureResponseOpen(true);
+  };
+
+  const submitFeatureResponse = () => {
+    if (!selectedFeature || !featureAdminResponse.trim() || !featurePrice.trim()) {
+      toast.error("Javob va narxni kiriting!");
+      return;
+    }
+    requireSecurity(() => {
+      const reqs = getFeatureRequests();
+      const idx = reqs.findIndex(r => r.id === selectedFeature!.id);
+      if (idx >= 0) {
+        reqs[idx] = {
+          ...reqs[idx],
+          adminResponse: featureAdminResponse.trim(),
+          price: parseInt(featurePrice),
+          status: 'priced',
+          updated_at: new Date().toISOString(),
+        };
+        saveFeatureRequests(reqs);
+      }
+      toast.success("Javob va narx yuborildi!");
+      setFeatureResponseOpen(false);
+      forceRefresh();
+    });
+  };
+
+  const openFeaturePrompt = (feature: FeatureRequest) => {
+    setSelectedFeature(feature);
+    setFeaturePrompt('');
+    setFeaturePromptOpen(true);
+  };
+
+  const submitFeatureComplete = () => {
+    if (!selectedFeature || !featurePrompt.trim()) {
+      toast.error("Prompt kiriting!");
+      return;
+    }
+    requireSecurity(() => {
+      const reqs = getFeatureRequests();
+      const idx = reqs.findIndex(r => r.id === selectedFeature!.id);
+      if (idx >= 0) {
+        reqs[idx] = {
+          ...reqs[idx],
+          adminPrompt: featurePrompt.trim(),
+          status: 'done',
+          updated_at: new Date().toISOString(),
+        };
+        saveFeatureRequests(reqs);
+      }
+      toast.success("Funksiya bajarildi deb belgilandi!");
+      setFeaturePromptOpen(false);
+      forceRefresh();
+    });
+  };
+
+  const rejectFeature = (featureId: string) => {
+    requireSecurity(() => {
+      const reqs = getFeatureRequests();
+      const idx = reqs.findIndex(r => r.id === featureId);
+      if (idx >= 0) {
+        reqs[idx] = { ...reqs[idx], status: 'rejected', updated_at: new Date().toISOString() };
+        saveFeatureRequests(reqs);
+      }
+      toast.success("So'rov rad etildi.");
+      forceRefresh();
+    });
+  };
+
   const sideItems = [
     { id: 'home' as Tab, icon: Home, label: 'Bosh sahifa' },
     { id: 'companies' as Tab, icon: Building2, label: 'Korxonalar' },
     { id: 'payments' as Tab, icon: CreditCard, label: "To'lovlar", badge: pendingPayments.length },
+    { id: 'features' as Tab, icon: Sparkles, label: "Funksiya so'rovlar", badge: pendingFeatures.length },
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Xabarlar' },
   ];
+
+  const getFeatureStatusBadge = (status: FeatureRequest['status']) => {
+    switch (status) {
+      case 'pending': return <span className="text-xs px-2 py-0.5 rounded-md bg-warning/10 text-warning font-medium">Yangi</span>;
+      case 'priced': return <span className="text-xs px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium">Narx belgilandi</span>;
+      case 'paid': return <span className="text-xs px-2 py-0.5 rounded-md bg-accent/50 text-accent-foreground font-medium">To'langan</span>;
+      case 'done': return <span className="text-xs px-2 py-0.5 rounded-md bg-success/10 text-success font-medium">Bajarildi</span>;
+      case 'rejected': return <span className="text-xs px-2 py-0.5 rounded-md bg-destructive/10 text-destructive font-medium">Rad etildi</span>;
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-muted/30">
@@ -236,12 +331,12 @@ export default function SuperAdminPage() {
         {tab === 'home' && (
           <div className="animate-fade-in">
             <h1 className="text-2xl font-extrabold text-foreground mb-6">Bosh sahifa</h1>
-            <div className="grid sm:grid-cols-3 gap-5 mb-8">
+            <div className="grid sm:grid-cols-4 gap-5 mb-8">
               <StatCard icon={Building2} label="Jami korxonalar" value={companies.length} />
               <StatCard icon={CheckCircle} label="Faol obunalar" value={activeCount} color="text-success" />
               <StatCard icon={CreditCard} label="Kutilayotgan to'lovlar" value={pendingPayments.length} color="text-warning" />
+              <StatCard icon={Sparkles} label="Funksiya so'rovlar" value={pendingFeatures.length} color="text-primary" />
             </div>
-            {/* Recent companies summary */}
             <div className="bg-card border border-border rounded-xl p-5">
               <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-primary" /> Oxirgi korxonalar
@@ -404,6 +499,70 @@ export default function SuperAdminPage() {
           </div>
         )}
 
+        {/* FEATURE REQUESTS */}
+        {tab === 'features' && (
+          <div className="animate-fade-in">
+            <h1 className="text-2xl font-extrabold text-foreground mb-6">Funksiya so'rovlari</h1>
+            {featureRequests.length === 0 ? (
+              <div className="bg-card border border-border rounded-xl p-12 text-center text-muted-foreground">
+                Hali so'rovlar yo'q
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {[...featureRequests].reverse().map(fr => (
+                  <div key={fr.id} className="bg-card border border-border rounded-xl p-5">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-semibold text-foreground text-sm">{fr.companyName}</span>
+                          {getFeatureStatusBadge(fr.status)}
+                        </div>
+                        <p className="text-sm text-muted-foreground">{new Date(fr.created_at).toLocaleDateString('uz-UZ')}</p>
+                      </div>
+                    </div>
+                    <div className="bg-secondary/50 rounded-lg p-3 mb-3">
+                      <p className="text-sm text-foreground">{fr.description}</p>
+                    </div>
+
+                    {fr.adminResponse && (
+                      <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 mb-3">
+                        <p className="text-xs text-muted-foreground mb-1">Sizning javobingiz:</p>
+                        <p className="text-sm text-foreground">{fr.adminResponse}</p>
+                        {fr.price && <p className="text-sm font-bold text-primary mt-1">Narx: {formatCurrency(fr.price)}</p>}
+                      </div>
+                    )}
+
+                    {fr.adminPrompt && (
+                      <div className="bg-success/5 border border-success/20 rounded-lg p-3 mb-3">
+                        <p className="text-xs text-success font-medium mb-1">Qo'shilgan funksiya promti:</p>
+                        <p className="text-sm text-foreground">{fr.adminPrompt}</p>
+                      </div>
+                    )}
+
+                    <div className="flex gap-2 mt-3">
+                      {fr.status === 'pending' && (
+                        <>
+                          <Button size="sm" onClick={() => openFeatureResponse(fr)}>
+                            <Send className="h-3 w-3 mr-1" /> Javob va narx
+                          </Button>
+                          <Button size="sm" variant="destructive" onClick={() => rejectFeature(fr.id)}>
+                            <X className="h-3 w-3 mr-1" /> Rad etish
+                          </Button>
+                        </>
+                      )}
+                      {fr.status === 'paid' && (
+                        <Button size="sm" onClick={() => openFeaturePrompt(fr)}>
+                          <Sparkles className="h-3 w-3 mr-1" /> Funksiyani qo'shish
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* MESSAGES */}
         {tab === 'messages' && (
           <div className="animate-fade-in">
@@ -516,6 +675,73 @@ export default function SuperAdminPage() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDurationOpen(false)}>Bekor</Button>
             <Button onClick={confirmApproval}>Tasdiqlash</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Feature Response Dialog */}
+      <Dialog open={featureResponseOpen} onOpenChange={setFeatureResponseOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Funksiyani tushuntirish va narx belgilash</DialogTitle>
+            <DialogDescription>
+              Mijoz so'rovi: {selectedFeature?.description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Tushuntirish</label>
+              <Textarea
+                value={featureAdminResponse}
+                onChange={e => setFeatureAdminResponse(e.target.value)}
+                placeholder="Bu funksiya qanday ishlashini tushuntiring..."
+                rows={4}
+              />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Narx (so'm)</label>
+              <Input
+                type="number"
+                value={featurePrice}
+                onChange={e => setFeaturePrice(e.target.value)}
+                placeholder="Masalan: 500000"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setFeatureResponseOpen(false)}>Bekor</Button>
+            <Button onClick={submitFeatureResponse}>Yuborish</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Feature Prompt Dialog (after payment) */}
+      <Dialog open={featurePromptOpen} onOpenChange={setFeaturePromptOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" /> Funksiyani qo'shish
+            </DialogTitle>
+            <DialogDescription>
+              So'rov: {selectedFeature?.description}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium text-foreground mb-1.5 block">Prompt / Funksiya tavsifi</label>
+              <Textarea
+                value={featurePrompt}
+                onChange={e => setFeaturePrompt(e.target.value)}
+                placeholder="Funksiyani qo'shish uchun batafsil prompt yozing..."
+                rows={6}
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setFeaturePromptOpen(false)}>Bekor</Button>
+            <Button onClick={submitFeatureComplete}>
+              <CheckCircle className="h-4 w-4 mr-2" /> Bajarildi
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
