@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatNumber } from '@/lib/helpers';
-import { Fuel, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
+import { getStationFuelTypes, getCurrentStation } from '@/lib/store';
+import { Fuel, BarChart3 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 export default function HomePage() {
