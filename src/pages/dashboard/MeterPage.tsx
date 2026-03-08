@@ -265,7 +265,7 @@ export default function MeterPage() {
                   <span className="text-xs font-semibold text-success">Prixod (kirish)</span>
                 </div>
                 <div><Label className="text-xs">Kirgan miqdor ({company.fuelTypes.find(ft => ft.name === f.type)?.unit || 'L'})</Label><Input type="number" value={f.prixod || ''} onChange={e => updateFuel(i, 'prixod', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>
-                <div><Label className="text-xs">Tannarx (so'm)</Label><Input type="number" value={f.tannarx || ''} onChange={e => updateFuel(i, 'tannarx', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>
+                {showTannarx && <div><Label className="text-xs">Tannarx (so'm)</Label><Input type="number" value={f.tannarx || ''} onChange={e => updateFuel(i, 'tannarx', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>}
               </div>
             </div>
           ))}
