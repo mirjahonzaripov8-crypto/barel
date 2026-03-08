@@ -85,12 +85,26 @@ export interface Payment {
   approved_until?: string;
 }
 
+export interface FeatureRequest {
+  id: string;
+  companyKey: string;
+  companyName: string;
+  description: string;
+  status: 'pending' | 'priced' | 'paid' | 'done' | 'rejected';
+  price?: number;
+  adminResponse?: string;
+  adminPrompt?: string;
+  created_at: string;
+  updated_at: string;
+}
+
 const STORAGE_KEYS = {
   COMPANIES: 'barel_companies',
   CURRENT_COMPANY: 'barel_current_company',
   CURRENT_USER: 'barel_current_user',
   CURRENT_STATION: 'barel_current_station',
   PAYMENTS: 'barel_payments',
+  FEATURE_REQUESTS: 'barel_feature_requests',
   SUPERADMIN_KEY: 'ZARIPOVM',
   SUPERADMIN_PASSWORD: '201116ZM',
 };
