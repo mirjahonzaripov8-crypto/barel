@@ -20,7 +20,7 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
   const card = getAdminCard();
 
   const getExpiryInfo = useCallback(() => {
-    if (!company || isLooker) return { locked: false, warning: false, daysPastExpiry: 0 };
+    if (!company) return { locked: false, warning: false, daysPastExpiry: 0 };
     const sub = checkSubscription(company);
     if (!sub.locked) return { ...sub, daysPastExpiry: 0 };
 
