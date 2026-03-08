@@ -9,14 +9,16 @@ import { syncCompanyUsersToDb } from '@/lib/syncUsers';
 interface AuthState {
   isLoggedIn: boolean;
   isSuperAdmin: boolean;
+  isLooker: boolean;
   user: { login: string; role: string; name: string; companyKey: string } | null;
   company: Company | null;
 }
 
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string) => { success: boolean; error?: string; isSuperAdmin?: boolean };
+  login: (username: string, password: string) => { success: boolean; error?: string; isSuperAdmin?: boolean; isLooker?: boolean };
   logout: () => void;
   refreshCompany: () => void;
+  setLookerCompany: (companyKey: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
