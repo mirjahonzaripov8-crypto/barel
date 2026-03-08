@@ -183,12 +183,19 @@ function generateAnswer(question: string, company: any): string {
     return `Men quyidagi savollarga javob bera olaman:\n\n• 💰 Sotuv va tushum haqida\n• 📉 Xarajatlar tahlili\n• 💵 Foyda va zarar\n• 💳 Terminal ma'lumotlari\n• ⛽ Mahsulotlar tahlili\n• 💡 Maslahat va tavsiyalar\n• 🏢 Korxona ma'lumotlari\n\nMasalan: "Foydamni ko'rsat", "Maslahat ber", "Qaysi mahsulot eng foydali?"`;
   }
 
-  // Default — give general summary with advice
-  let resp = `Savolingizni tushundim. Mana korxonangiz haqida qisqacha:\n\n`;
+  // Default — reject non-app questions
+  const appKeywords = /sotuv|sotil|tushum|xarajat|harajat|foyda|zarar|terminal|mahsulot|yoqilgi|benzin|propan|dizel|metan|narx|pul|summa|kassa|litr|korxona|zapravka|ishchi|operator|plomba|hisoblagich|moliya|arxiv|referal|tarif|obuna|maslahat|tavsiya|tahlil|statistika|grafik|pdf|parol|lock|blok/;
+
+  if (!appKeywords.test(q)) {
+    return `❌ Kechirasiz, men faqat korxona va ilova bilan bog'liq savollarga javob beraman.\n\nMen yordam bera oladigan mavzular:\n• 💰 Sotuv va tushum\n• 📉 Xarajatlar\n• 💵 Foyda va zarar\n• ⛽ Mahsulotlar tahlili\n• 💡 Maslahat va tavsiyalar\n\nMasalan: "Foydamni ko'rsat", "Maslahat ber", "Xarajatlarim qancha?"`;
+  }
+
+  // Fallback for app-related but unmatched
+  let resp = `📊 Korxonangiz haqida qisqacha:\n\n`;
   resp += `💰 Oxirgi ${analysis.daysCount} kun tushumi: ${formatCurrency(analysis.totalRevenue)}\n`;
   resp += `💵 Sof foyda: ${formatCurrency(analysis.netProfit)}\n`;
   resp += `📉 Xarajatlar: ${formatCurrency(analysis.totalExpenses)}\n\n`;
-  resp += `Aniqroq javob olish uchun quyidagilarni so'rang:\n• "Sotuv qancha?"\n• "Xarajatlarim nima?"\n• "Maslahat ber"\n• "Qaysi mahsulot foydali?"`;
+  resp += `Aniqroq javob olish uchun so'rang:\n• "Sotuv qancha?"\n• "Xarajatlarim nima?"\n• "Maslahat ber"\n• "Qaysi mahsulot foydali?"`;
   return resp;
 }
 
