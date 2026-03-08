@@ -182,14 +182,14 @@ export default function TelegramPage() {
             Bot ulanishi
           </CardTitle>
           <CardDescription>
-            Telegram botini ulash uchun @BAREluz_bot ga /start buyrug'ini yuboring va Chat ID ni kiriting
+            Telegram botini ulash uchun @Barel_uz_bot ga /start buyrug'ini yuboring va Chat ID ni kiriting
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="bg-muted/50 border border-border rounded-lg p-4 text-sm space-y-2">
             <p className="font-medium text-foreground">📋 Qanday ulash:</p>
             <ol className="list-decimal list-inside text-muted-foreground space-y-1">
-              <li>Telegramda <b>@BAREluz_bot</b> ni toping</li>
+              <li>Telegramda <b>@Barel_uz_bot</b> ni toping</li>
               <li><b>/start</b> buyrug'ini yuboring</li>
               <li>Bot bergan <b>Chat ID</b> ni quyidagi maydonga kiriting</li>
               <li><b>"Tekshirish"</b> tugmasini bosing</li>
