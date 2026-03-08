@@ -145,11 +145,16 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
           <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
             <AlertTriangle className="h-8 w-8 text-destructive" />
           </div>
-          <div>
+           <div>
             <h1 className="text-2xl font-bold text-foreground mb-2">Obuna muddati tugagan!</h1>
             <p className="text-muted-foreground text-sm">
               Tizimdan foydalanish uchun obuna to'lovini amalga oshiring.
             </p>
+            {planPrice > 0 && (
+              <p className="text-lg font-bold text-primary mt-2">
+                To'lov summasi: {formatCurrency(planPrice)}
+              </p>
+            )}
           </div>
 
           <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5">
