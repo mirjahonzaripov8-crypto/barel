@@ -327,7 +327,7 @@ export function seedDemoData() {
     ],
     data: demoData,
     conf: {
-      prices: { 'AI-80': 8000, 'AI-91': 9200, 'AI-95': 10500, 'Dizel': 9800, 'Metan': 2200 },
+      prices: { 'Propan': 6500, 'AI-91': 9200, 'AI-92': 9800, 'AI-95': 10500, 'Dizel': 9800, 'Metan': 2200 },
       fix: 2500000,
     },
     logs: [
