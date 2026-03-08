@@ -48,7 +48,7 @@ export const PLANS = {
   START: { 
     name: 'Boshlang\'ich', 
     badge: '🥉',
-    price: 200000, 
+    price: 199999, 
     maxLogins: 3,
     description: 'Tizimni endi joriy etayotgan ixcham shoxobchalar uchun',
     features: [
@@ -70,7 +70,7 @@ export const PLANS = {
     name: 'Standart', 
     badge: '🥈',
     popular: true,
-    price: 450000, 
+    price: 399999, 
     maxLogins: 6,
     description: 'Eng ommabop tarif - professional hisobotlar va nazorat',
     features: [
@@ -93,7 +93,7 @@ export const PLANS = {
   PREMIUM: { 
     name: 'Premium', 
     badge: '🥇',
-    price: 800000, 
+    price: 699999, 
     maxLogins: 8,
     description: 'Eng yuqori daraja - to\'liq nazorat va ustuvor yordam',
     features: [
