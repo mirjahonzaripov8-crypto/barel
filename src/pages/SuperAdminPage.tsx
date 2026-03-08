@@ -12,7 +12,8 @@ import {
 } from '@/components/ui/dialog';
 import {
   Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle,
-  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet, ScanFace, Phone, Instagram
+  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet, ScanFace, Phone, Instagram, 
+  Settings, Play, Rocket, RotateCcw, Layers
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
