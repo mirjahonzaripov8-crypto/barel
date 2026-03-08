@@ -21,7 +21,7 @@ import {
   hasBiometricRegistered, isInIframe
 } from '@/lib/biometric';
 
-type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card' | 'faceid' | 'contacts';
+type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card' | 'faceid' | 'contacts' | 'featuremgmt';
 
 function getStatusLabel(status: string) {
   switch (status) {
