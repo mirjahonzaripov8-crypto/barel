@@ -300,7 +300,7 @@ export default function RegisterPage() {
                           </p>
                         )}
                         {p.promoDiscount > 0 && (
-                          <p className="text-primary font-semibold">🎁 Promokod: −5% (−{p.promoDiscount.toLocaleString()} so'm)</p>
+                          <p className="text-primary font-semibold">🎁 Promokod: −10% (−{p.promoDiscount.toLocaleString()} so'm)</p>
                         )}
                       </div>
                     )}
