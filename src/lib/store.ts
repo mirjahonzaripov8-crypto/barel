@@ -110,6 +110,20 @@ export interface ContactInfo {
   instagram: string;
 }
 
+export interface CustomFeature {
+  id: string;
+  title: string;
+  description: string;
+  prompt: string;
+  targetPlan: 'START' | 'STANDART' | 'PREMIUM';
+  status: 'draft' | 'testing' | 'active' | 'rejected';
+  fromRequestId?: string; // linked feature request id
+  created_at: string;
+  updated_at: string;
+  testedAt?: string;
+  deployedAt?: string;
+}
+
 const DEFAULT_CONTACTS: ContactInfo = {
   phone: '+998997771702',
   telegramBot: '@Barel_uz_bot',
@@ -126,6 +140,7 @@ const STORAGE_KEYS = {
   FEATURE_REQUESTS: 'barel_feature_requests',
   ADMIN_CARD: 'barel_admin_card',
   ADMIN_CONTACTS: 'barel_admin_contacts',
+  CUSTOM_FEATURES: 'barel_custom_features',
   SUPERADMIN_KEY: 'ZARIPOVM',
   SUPERADMIN_PASSWORD: '201116ZM',
 };
