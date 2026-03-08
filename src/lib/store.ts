@@ -341,6 +341,7 @@ export function seedDemoData() {
     plomba: [
       { date: new Date().toISOString().split('T')[0], numbers: ['PL-001', 'PL-002', 'PL-003'], status: 'Yaxshi' },
     ],
+    securityPassword: '20113',
     created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
   };
 
