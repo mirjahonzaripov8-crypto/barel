@@ -90,6 +90,7 @@ const STORAGE_KEYS = {
   CURRENT_STATION: 'barel_current_station',
   PAYMENTS: 'barel_payments',
   SUPERADMIN_KEY: 'ZARIPOVM',
+  SUPERADMIN_PASSWORD: '201116ZM',
 };
 
 function loadJSON<T>(key: string, fallback: T): T {
