@@ -70,10 +70,11 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Set webhook endpoint
-    if (url.pathname.endsWith('/set-webhook')) {
+    // Check if this is a set-webhook request via query param or body
+    const isSetWebhook = url.searchParams.get('action') === 'set-webhook';
+    if (isSetWebhook) {
       const supabaseUrl = Deno.env.get('SUPABASE_URL');
-      const webhookUrl = `${supabaseUrl}/functions/v1/telegram-bot/webhook`;
+      const webhookUrl = `${supabaseUrl}/functions/v1/telegram-bot?mode=webhook`;
       
       const res = await fetch(`${TELEGRAM_API}${botToken}/setWebhook`, {
         method: 'POST',
@@ -84,6 +85,56 @@ Deno.serve(async (req) => {
       
       return new Response(JSON.stringify(data), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+    
+    // Check if this is a webhook call from Telegram
+    const isWebhookMode = url.searchParams.get('mode') === 'webhook';
+    if (isWebhookMode) {
+      const update = await req.json();
+      console.log('Telegram update received:', JSON.stringify(update));
+      
+      if (update.message) {
+        const chatId = update.message.chat.id;
+        const text = update.message.text || '';
+        const firstName = update.message.from?.first_name || 'Foydalanuvchi';
+        
+        if (text === '/start') {
+          const responseText = `👋 Salom, ${firstName}!\n\n` +
+            `🤖 BAREL.uz Telegram botiga xush kelibsiz!\n\n` +
+            `📋 Sizning Chat ID: <code>${chatId}</code>\n\n` +
+            `👆 Ushbu raqamni nusxalab, BAREL.uz dashboardidagi Telegram sozlamalariga kiriting.\n\n` +
+            `✅ Shundan so'ng siz kunlik hisobotlar va bildirishnomalarni olishingiz mumkin bo'ladi.`;
+          
+          await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: responseText,
+              parse_mode: 'HTML',
+            }),
+          });
+        } else if (text === '/help') {
+          const helpText = `📖 <b>BAREL.uz Bot Yordam</b>\n\n` +
+            `/start - Chat ID ni olish\n` +
+            `/help - Yordam\n\n` +
+            `🔗 Batafsil: barel.uz`;
+          
+          await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: helpText,
+              parse_mode: 'HTML',
+            }),
+          });
+        }
+      }
+      
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json' },
       });
     }
 
