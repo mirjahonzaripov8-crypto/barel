@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      telegram_sessions: {
+        Row: {
+          chat_id: string
+          company_key: string | null
+          created_at: string | null
+          current_fuel_index: number | null
+          data: Json | null
+          id: string
+          state: string
+          updated_at: string | null
+          user_login: string | null
+        }
+        Insert: {
+          chat_id: string
+          company_key?: string | null
+          created_at?: string | null
+          current_fuel_index?: number | null
+          data?: Json | null
+          id?: string
+          state?: string
+          updated_at?: string | null
+          user_login?: string | null
+        }
+        Update: {
+          chat_id?: string
+          company_key?: string | null
+          created_at?: string | null
+          current_fuel_index?: number | null
+          data?: Json | null
+          id?: string
+          state?: string
+          updated_at?: string | null
+          user_login?: string | null
+        }
+        Relationships: []
+      }
       telegram_settings: {
         Row: {
           chat_id: string | null
