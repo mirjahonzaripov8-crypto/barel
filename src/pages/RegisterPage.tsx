@@ -64,7 +64,7 @@ export default function RegisterPage() {
       firstName: form.firstName, lastName: form.lastName,
       companyName: form.companyName, phone: form.phone,
       stations: form.stations.filter(s => s.trim()),
-      fuelTypes: form.fuelTypes.filter(f => f.selected).map(({ name, unit }) => ({ name, unit })),
+      fuelTypes: form.fuelTypes.filter(f => f.selected).map(({ name, unit, meterCount }) => ({ name, unit, meterCount: meterCount || 1 })),
       plan: form.plan, login: form.login, password: form.password,
       promocode: form.promocode || undefined,
       securityPassword: form.securityPassword,

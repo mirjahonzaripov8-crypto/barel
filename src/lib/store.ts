@@ -2,6 +2,7 @@
 export interface FuelType {
   name: string;
   unit: string;
+  meterCount?: number; // nechta hisoblagich (default 1)
 }
 
 export interface DayRecord {
