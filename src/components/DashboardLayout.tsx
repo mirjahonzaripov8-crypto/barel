@@ -42,9 +42,14 @@ export default function DashboardLayout() {
   // Redirect if trying to access restricted route
   useEffect(() => {
     if (!isRouteAllowed(plan, location.pathname)) {
-      navigate('/dashboard');
+      navigate('/dashboard/meter');
+      return;
     }
-  }, [location.pathname, plan, navigate]);
+    // Operators can only access meter page
+    if (isOperator && location.pathname !== '/dashboard/meter') {
+      navigate('/dashboard/meter');
+    }
+  }, [location.pathname, plan, navigate, isOperator]);
 
   const handleLogout = () => { logout(); navigate('/'); };
   const isActive = (path: string) => location.pathname === path;
