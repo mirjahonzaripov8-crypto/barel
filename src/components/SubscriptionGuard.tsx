@@ -36,7 +36,7 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
       : 999;
 
     return { ...sub, daysPastExpiry: daysPast };
-  }, [company, isLooker]);
+  }, [company]);
 
   useEffect(() => {
     if (!company || isLooker) return;
