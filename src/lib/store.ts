@@ -327,7 +327,7 @@ export function seedDemoData() {
     promocode: 'DEMO',
     users: [
       { login: 'demo', password: 'demo', name: 'Zaripov Mansur', role: 'BOSS' },
-      { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'WORKER' },
+      { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'OPERATOR' },
     ],
     data: demoData,
     conf: {
