@@ -1,23 +1,24 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, ChevronRight
+  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { isRouteAllowed, type PlanKey } from '@/lib/helpers';
 
-const navItems = [
+const allNavItems = [
   { path: '/dashboard', icon: Home, label: 'Bosh sahifa' },
   { path: '/dashboard/finance', icon: DollarSign, label: 'Moliya' },
   { path: '/dashboard/expenses', icon: MinusCircle, label: 'Xarajatlar' },
   { path: '/dashboard/meter', icon: Gauge, label: 'Hisoblagich' },
   { path: '/dashboard/archive', icon: Archive, label: 'Arxiv' },
-  { path: '/dashboard/workers', icon: Users, label: 'Ishchilar' },
-  { path: '/dashboard/plomba', icon: Lock, label: 'Plomba' },
-  { path: '/dashboard/referrals', icon: Gift, label: 'Referallar' },
+  { path: '/dashboard/workers', icon: Users, label: 'Ishchilar', minPlan: 'PRO' },
+  { path: '/dashboard/plomba', icon: Lock, label: 'Plomba', minPlan: 'PRO' },
+  { path: '/dashboard/referrals', icon: Gift, label: 'Referallar', minPlan: 'PREMIUM' },
   { path: '/dashboard/security', icon: Shield, label: 'Xavfsizlik' },
-  { path: '/dashboard/ai', icon: Bot, label: 'AI yordamchi' },
+  { path: '/dashboard/ai', icon: Bot, label: 'AI yordamchi', minPlan: 'PREMIUM' },
 ];
 
 export default function DashboardLayout() {
@@ -26,9 +27,29 @@ export default function DashboardLayout() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const plan = (company?.plan || 'START') as PlanKey;
+
+  // Filter nav items based on plan
+  const navItems = allNavItems.filter(item => isRouteAllowed(plan, item.path));
+
+  // Redirect if trying to access restricted route
+  useEffect(() => {
+    if (!isRouteAllowed(plan, location.pathname)) {
+      navigate('/dashboard');
+    }
+  }, [location.pathname, plan, navigate]);
+
   const handleLogout = () => { logout(); navigate('/'); };
   const isActive = (path: string) => location.pathname === path;
   const stationName = company?.stations?.[0] || company?.name || '';
+
+  const getPlanColor = () => {
+    switch (plan) {
+      case 'PREMIUM': return 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white';
+      case 'PRO': return 'bg-gradient-to-r from-blue-500 to-purple-500 text-white';
+      default: return 'bg-secondary text-foreground';
+    }
+  };
 
   return (
     <div className="min-h-screen flex bg-background">
@@ -52,9 +73,28 @@ export default function DashboardLayout() {
             >
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
+              {item.minPlan === 'PREMIUM' && <Crown className="h-3 w-3 ml-auto text-yellow-500" />}
             </button>
           ))}
         </nav>
+        
+        {/* Upgrade prompt for non-premium */}
+        {plan !== 'PREMIUM' && (
+          <div className="mx-3 mb-3 p-3 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
+            <p className="text-xs text-muted-foreground mb-2">
+              {plan === 'START' ? 'Ishchilar va Plomba' : 'AI va Referallar'} uchun
+            </p>
+            <Button 
+              size="sm" 
+              className="w-full text-xs"
+              onClick={() => navigate('/dashboard')}
+            >
+              <Crown className="h-3 w-3 mr-1" />
+              {plan === 'START' ? 'PRO ga' : 'PREMIUM ga'} yangilash
+            </Button>
+          </div>
+        )}
+
         <div className="p-3 border-t border-border">
           <div className="px-3 py-2 mb-2">
             <p className="text-xs text-muted-foreground">Foydalanuvchi</p>
@@ -92,9 +132,24 @@ export default function DashboardLayout() {
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" /> {item.label}
+              {item.minPlan === 'PREMIUM' && <Crown className="h-3 w-3 ml-auto text-yellow-500" />}
             </button>
           ))}
         </nav>
+        
+        {plan !== 'PREMIUM' && (
+          <div className="mx-3 mb-3 p-3 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
+            <Button 
+              size="sm" 
+              className="w-full text-xs"
+              onClick={() => { navigate('/dashboard'); setMobileOpen(false); }}
+            >
+              <Crown className="h-3 w-3 mr-1" />
+              Tarifni yangilash
+            </Button>
+          </div>
+        )}
+
         <div className="p-3 border-t border-border">
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
             <LogOut className="h-4 w-4" /> Chiqish
@@ -113,7 +168,10 @@ export default function DashboardLayout() {
           </div>
           <div className="flex items-center gap-2">
             <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : '👷 Ishchi'}</span>
-            <span className="text-xs bg-secondary text-foreground px-2 py-1 rounded-md font-medium">{company?.plan}</span>
+            <span className={cn("text-xs px-2 py-1 rounded-md font-medium", getPlanColor())}>
+              {plan === 'PREMIUM' && <Crown className="h-3 w-3 inline mr-1" />}
+              {plan}
+            </span>
           </div>
         </header>
         <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
