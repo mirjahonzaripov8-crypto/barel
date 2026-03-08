@@ -149,9 +149,13 @@ export function hasPrioritySupport(plan: PlanKey): boolean {
 }
 
 export function isRouteAllowed(plan: PlanKey, route: string): boolean {
-  return (PLANS[plan].allowedRoutes as readonly string[]).includes(route);
+  const planConfig = PLANS[plan];
+  if (!planConfig) return PLANS.START.allowedRoutes.includes(route);
+  return (planConfig.allowedRoutes as readonly string[]).includes(route);
 }
 
 export function getNavItemsForPlan(plan: PlanKey): readonly string[] {
-  return PLANS[plan].allowedRoutes;
+  const planConfig = PLANS[plan];
+  if (!planConfig) return PLANS.START.allowedRoutes;
+  return planConfig.allowedRoutes;
 }
