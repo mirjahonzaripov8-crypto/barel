@@ -15,10 +15,9 @@ interface AuthState {
 }
 
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string) => { success: boolean; error?: string; isSuperAdmin?: boolean; isLooker?: boolean };
+  login: (username: string, password: string) => { success: boolean; error?: string; isSuperAdmin?: boolean };
   logout: () => void;
   refreshCompany: () => void;
-  setLookerCompany: (companyKey: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
