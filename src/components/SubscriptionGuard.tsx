@@ -11,7 +11,7 @@ import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
 export default function SubscriptionGuard({ children }: { children: React.ReactNode }) {
-  const { company, user, logout, isLooker } = useAuth();
+  const { company, user, logout } = useAuth();
   const [reminderOpen, setReminderOpen] = useState(false);
   const [hardLocked, setHardLocked] = useState(false);
   const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
