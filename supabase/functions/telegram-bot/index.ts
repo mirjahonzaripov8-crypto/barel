@@ -165,7 +165,7 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'daily_report') {
-      const { company_name, report_date, fuels, total_sales, total_expenses, net_profit } = body;
+      const { company_name, report_date, fuels, total_sales, total_expenses, net_profit, terminal: terminalVal, naqd_pul } = body;
 
       let text = `📊 <b>${company_name}</b>\n`;
       text += `📅 Kunlik hisobot: <b>${report_date}</b>\n\n`;
@@ -179,9 +179,11 @@ Deno.serve(async (req) => {
       }
 
       text += `💰 Jami sotuv: <b>${total_sales} so'm</b>\n`;
+      if (terminalVal) text += `💳 Terminal: <b>${terminalVal} so'm</b>\n`;
       text += `📉 Xarajatlar: <b>${total_expenses} so'm</b>\n`;
-      text += `📈 Sof foyda: <b>${net_profit} so'm</b>\n\n`;
-      text += `🤖 BAREL.uz avtomatik hisobot`;
+      text += `📈 Sof foyda: <b>${net_profit} so'm</b>\n`;
+      if (naqd_pul) text += `💵 Naqd pul: <b>${naqd_pul} so'm</b>\n`;
+      text += `\n🤖 BAREL.uz avtomatik hisobot`;
 
       const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
         method: 'POST',
