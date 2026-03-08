@@ -46,26 +46,82 @@ export function getMonthAgoStr(): string {
 
 export const PLANS = {
   START: { 
-    name: 'START', 
-    price: 399000, 
-    features: ['1 ta zapravka', 'Kunlik hisoblagich', 'Moliya', 'Arxiv'],
-    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/security']
+    name: 'Boshlang\'ich', 
+    badge: '🥉',
+    price: 200000, 
+    maxLogins: 2,
+    features: [
+      '2 ta login (kassir/ishchi)',
+      'Savdo va ombor hisobi',
+      'Ekranda ko\'rish',
+      'Parol himoyasi'
+    ],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/meter', '/dashboard/archive', '/dashboard/security'],
+    canExportPdf: false,
+    canExportExcel: false,
+    hasCharts: false,
+    hasTelegramBot: false
   },
-  PRO: { 
-    name: 'PRO', 
-    price: 599000, 
-    features: ['3 ta zapravka', 'Barcha START imkoniyatlari', 'Xodimlar boshqaruvi', 'PDF eksport', 'Plomba nazorati'],
-    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/security']
+  STANDART: { 
+    name: 'Standart', 
+    badge: '🥈',
+    popular: true,
+    price: 450000, 
+    maxLogins: 5,
+    features: [
+      '5 tagacha login',
+      'Savdo va ombor hisobi',
+      'PDF eksport (Zebra dizayn)',
+      'Sotuv dinamikasi diagrammasi',
+      'Telegram bot (kunlik hisobot)',
+      'Parol + Harakatlar tarixi'
+    ],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/security'],
+    canExportPdf: true,
+    canExportExcel: false,
+    hasCharts: true,
+    hasTelegramBot: true
   },
   PREMIUM: { 
-    name: 'PREMIUM', 
-    price: 899000, 
-    features: ['Cheksiz zapravka', 'Barcha PRO imkoniyatlari', 'AI yordamchi', 'Referral tizimi', 'Prioritet yordam'],
-    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/referrals', '/dashboard/security', '/dashboard/ai']
+    name: 'Premium', 
+    badge: '🥇',
+    price: 800000, 
+    maxLogins: Infinity,
+    features: [
+      'Cheksiz loginlar',
+      'Savdo va ombor hisobi',
+      'PDF + Excel eksport',
+      'Barcha analitika diagrammalari',
+      'Telegram bot (jonli xabarlar)',
+      'Face ID / Barmoq izi',
+      'AI yordamchi',
+      'Referal tizimi'
+    ],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/referrals', '/dashboard/security', '/dashboard/ai'],
+    canExportPdf: true,
+    canExportExcel: true,
+    hasCharts: true,
+    hasTelegramBot: true
   },
 } as const;
 
 export type PlanKey = keyof typeof PLANS;
+
+export function canExportPdf(plan: PlanKey): boolean {
+  return PLANS[plan].canExportPdf;
+}
+
+export function canExportExcel(plan: PlanKey): boolean {
+  return PLANS[plan].canExportExcel;
+}
+
+export function hasCharts(plan: PlanKey): boolean {
+  return PLANS[plan].hasCharts;
+}
+
+export function getMaxLogins(plan: PlanKey): number {
+  return PLANS[plan].maxLogins;
+}
 
 export function isRouteAllowed(plan: PlanKey, route: string): boolean {
   return (PLANS[plan].allowedRoutes as readonly string[]).includes(route);
