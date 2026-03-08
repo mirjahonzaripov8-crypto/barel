@@ -32,10 +32,10 @@ export default function DashboardLayout() {
   const plan = (company?.plan || 'START') as PlanKey;
 
   // Filter nav items based on plan and role
-  const isOperator = user?.role === 'OPERATOR';
+  const isOperator = user?.role === 'OPERATOR' && !isLooker;
   const navItems = allNavItems.filter(item => {
+    if (isLooker) return true; // Looker sees everything
     if (!isRouteAllowed(plan, item.path)) return false;
-    // Operators can only see Hisoblagich
     if (isOperator && item.path !== '/dashboard/meter') return false;
     return true;
   });
