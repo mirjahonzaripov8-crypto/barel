@@ -879,6 +879,13 @@ export default function SuperAdminPage() {
                       )}
                       {cf.status === 'testing' && (
                         <>
+                          <Button size="sm" variant="secondary" onClick={() => {
+                            createOrUpdateDemoCompany(cf.targetPlan, cf.title);
+                            setDemoFeatureTitle(cf.title);
+                            setDemoDialogOpen(true);
+                          }}>
+                            <Eye className="h-3 w-3 mr-1" /> Demo ochish
+                          </Button>
                           <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => {
                             requireSecurity(() => {
                               updateCustomFeature(cf.id, f => ({
@@ -887,6 +894,8 @@ export default function SuperAdminPage() {
                                 deployedAt: new Date().toISOString(),
                                 updated_at: new Date().toISOString(),
                               }));
+                              // Clean up demo company
+                              removeDemoCompany();
                               toast.success(`"${cf.title}" funksiyasi ${PLANS[cf.targetPlan].name} tarifiga qo'shildi! ✅`);
                               forceRefresh();
                             });
@@ -897,6 +906,7 @@ export default function SuperAdminPage() {
                             updateCustomFeature(cf.id, f => ({
                               ...f, status: 'draft', updated_at: new Date().toISOString()
                             }));
+                            removeDemoCompany();
                             toast.info("Qayta qoralamaga qaytarildi.");
                             forceRefresh();
                           }}>
@@ -906,6 +916,7 @@ export default function SuperAdminPage() {
                             updateCustomFeature(cf.id, f => ({
                               ...f, status: 'rejected', updated_at: new Date().toISOString()
                             }));
+                            removeDemoCompany();
                             toast.success("Funksiya rad etildi.");
                             forceRefresh();
                           }}>
