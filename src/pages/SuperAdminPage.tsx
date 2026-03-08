@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import {
   Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle,
-  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet, ScanFace
+  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet, ScanFace, Phone, Instagram
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
