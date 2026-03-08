@@ -552,9 +552,12 @@ function ok() {
 }
 
 async function startDataEntry(botToken: string, supabase: any, chatId: string, sd: any) {
+  // Yesterday's date
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
   const fuelTypes = sd.fuelTypes || ['Propan', 'AI-91', 'AI-92', 'AI-95', 'Dizel', 'Metan'];
-  const buttons = fuelTypes.map((ft: string) => [{ text: `⛽ ${ft}`, callback_data: `fuel_${ft}` }]);
-  buttons.push([{ text: '✅ Tayyor', callback_data: 'fuel_done' }]);
 
   await upsertSession(supabase, chatId, {
     state: 'AWAITING_FUEL_TYPE',
@@ -563,10 +566,14 @@ async function startDataEntry(botToken: string, supabase: any, chatId: string, s
       fuels: [],
       expenses: [],
       terminal: 0,
-      date: new Date().toISOString().split('T')[0],
+      date: yesterdayStr,
     },
   });
-  await sendMessage(botToken, chatId, '⛽ <b>Yoqilg\'i turini tanlang:</b>', { inline_keyboard: buttons });
+
+  const buttons = fuelTypes.map((ft: string) => [{ text: `⛽ ${ft}`, callback_data: `fuel_${ft}` }]);
+  buttons.push([{ text: '✅ Tayyor', callback_data: 'fuel_done' }]);
+
+  await sendMessage(botToken, chatId, `📅 Sana: <b>${yesterdayStr}</b>\n\n⛽ <b>Yoqilg'i turini tanlang:</b>`, { inline_keyboard: buttons });
 }
 
 async function addFuelAndContinue(botToken: string, supabase: any, chatId: string, sd: any, prixod: number) {
