@@ -176,16 +176,25 @@ export default function MeterPage() {
     sendTelegramNotification();
   };
 
-  const isLocked = company.locks.main;
+  const isLocked = company.locks.main || !!isEditExpired;
 
   const totalSales = fuels.reduce((s, f) => s + f.sold * f.price, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+
+  // For operators: hide tannarx field (boss only)
+  const showTannarx = !isOperator;
 
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">KUNLIK HISOBLAGICH</h1>
-        {isLocked && <span className="bg-destructive/10 text-destructive text-xs font-medium px-2 py-1 rounded-md">🔒 BLOKLANGAN</span>}
+        {company.locks.main && <span className="bg-destructive/10 text-destructive text-xs font-medium px-2 py-1 rounded-md">🔒 BLOKLANGAN</span>}
+        {isEditExpired && <span className="bg-destructive/10 text-destructive text-xs font-medium px-2 py-1 rounded-md">⏰ 30 daqiqa o'tdi</span>}
+        {isOperator && savedAt && !isEditExpired && (
+          <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-md">
+            ⏱️ {Math.max(0, 30 - Math.floor((Date.now() - new Date(savedAt).getTime()) / 60000))} daqiqa qoldi
+          </span>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg p-4 md:p-6">
