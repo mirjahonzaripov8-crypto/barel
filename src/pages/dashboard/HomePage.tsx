@@ -9,7 +9,9 @@ export default function HomePage() {
   if (!company) return null;
 
   const lastDay = company.data[company.data.length - 1];
-  const fuelStats = company.fuelTypes.flatMap(ft => {
+  const stationIdx = getCurrentStation();
+  const stationFuels = getStationFuelTypes(company, stationIdx);
+  const fuelStats = stationFuels.flatMap(ft => {
     const count = ft.meterCount || 1;
     const meters = [];
     for (let m = 0; m < count; m++) {

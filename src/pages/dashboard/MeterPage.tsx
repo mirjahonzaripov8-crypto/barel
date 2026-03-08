@@ -60,9 +60,11 @@ export default function MeterPage() {
     } else {
       setIsExistingRecord(false);
       setSavedAt(null);
-      // New day - expand fuels based on meterCount
+      // New day - expand fuels based on meterCount (per-station)
       const expandedFuels: typeof fuels = [];
-      company.fuelTypes.forEach(ft => {
+      const stationIdx = getCurrentStation();
+      const stationFuels = getStationFuelTypes(company, stationIdx);
+      stationFuels.forEach(ft => {
         const count = ft.meterCount || 1;
         for (let m = 0; m < count; m++) {
           const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
