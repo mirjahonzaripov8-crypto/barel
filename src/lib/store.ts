@@ -321,7 +321,7 @@ export function seedDemoData() {
     phone: '+998 91 123 45 67',
     stations: ['BUXORO-1', 'QORAKUL-2'],
     fuelTypes: demoFuels,
-    plan: 'PRO',
+    plan: 'STANDART',
     subscription: { status: 'trial', trial_end_date: trialEnd.toISOString() },
     promocode: 'DEMO',
     users: [

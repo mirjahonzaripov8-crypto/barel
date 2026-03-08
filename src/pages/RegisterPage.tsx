@@ -25,7 +25,7 @@ export default function RegisterPage() {
     firstName: '', lastName: '', companyName: '', phone: '',
     stations: [''],
     fuelTypes: defaultFuels.map(f => ({ ...f, selected: true })),
-    plan: (searchParams.get('plan') as PlanKey) || 'PRO' as PlanKey,
+    plan: (searchParams.get('plan') as PlanKey) || 'STANDART' as PlanKey,
     promocode: '', login: '', password: '',
     securityPassword: '',
   });

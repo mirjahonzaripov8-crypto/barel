@@ -121,7 +121,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button onClick={() => navigate(`/register?plan=${key}`)} className="w-full" variant={isPro ? 'default' : 'outline'}>
+                <Button onClick={() => navigate(`/register?plan=${key}`)} className="w-full" variant={isPopular ? 'default' : 'outline'}>
                   7 kun bepul
                 </Button>
               </div>
