@@ -49,30 +49,35 @@ export const PLANS = {
     name: 'Boshlang\'ich', 
     badge: '🥉',
     price: 200000, 
-    maxLogins: 2,
+    maxLogins: 3,
+    description: 'Tizimni endi joriy etayotgan ixcham shoxobchalar uchun',
     features: [
-      '2 ta login (kassir/ishchi)',
-      'Savdo va ombor hisobi',
+      'Maksimal 3 kishi (1 rahbar + 2 kassir)',
+      'Savdo, ombor va xarajatlar hisobi',
       'Ekranda ko\'rish',
-      'Parol himoyasi'
+      'Login va parol himoyasi'
     ],
     allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/meter', '/dashboard/archive', '/dashboard/security'],
     canExportPdf: false,
     canExportExcel: false,
     hasCharts: false,
-    hasTelegramBot: false
+    hasTelegramBot: false,
+    hasActionHistory: false,
+    hasFaceId: false,
+    hasPrioritySupport: false
   },
   STANDART: { 
     name: 'Standart', 
     badge: '🥈',
     popular: true,
     price: 450000, 
-    maxLogins: 5,
+    maxLogins: 6,
+    description: 'Eng ommabop tarif - professional hisobotlar va nazorat',
     features: [
-      '5 tagacha login',
-      'Savdo va ombor hisobi',
-      'PDF eksport (Zebra dizayn)',
-      'Sotuv dinamikasi diagrammasi',
+      'Maksimal 6 kishi',
+      'Barcha Boshlang\'ich imkoniyatlari',
+      'PDF eksport (professional dizayn)',
+      'Savdo dinamikasi grafiklari',
       'Telegram bot (kunlik hisobot)',
       'Parol + Harakatlar tarixi'
     ],
@@ -80,28 +85,36 @@ export const PLANS = {
     canExportPdf: true,
     canExportExcel: false,
     hasCharts: true,
-    hasTelegramBot: true
+    hasTelegramBot: true,
+    hasActionHistory: true,
+    hasFaceId: false,
+    hasPrioritySupport: false
   },
   PREMIUM: { 
     name: 'Premium', 
     badge: '🥇',
     price: 800000, 
-    maxLogins: Infinity,
+    maxLogins: 8,
+    description: 'Eng yuqori daraja - to\'liq nazorat va ustuvor yordam',
     features: [
-      'Cheksiz loginlar',
-      'Savdo va ombor hisobi',
+      'Maksimal 8 kishi',
+      'Barcha Standart imkoniyatlari',
       'PDF + Excel eksport',
-      'Barcha analitika diagrammalari',
+      'Chuqurlashtirilgan analitika',
       'Telegram bot (jonli xabarlar)',
-      'Face ID / Barmoq izi',
+      'Face ID tekshirish',
       'AI yordamchi',
-      'Referal tizimi'
+      'Referal tizimi',
+      'Ustuvor texnik yordam'
     ],
     allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/referrals', '/dashboard/security', '/dashboard/ai'],
     canExportPdf: true,
     canExportExcel: true,
     hasCharts: true,
-    hasTelegramBot: true
+    hasTelegramBot: true,
+    hasActionHistory: true,
+    hasFaceId: true,
+    hasPrioritySupport: true
   },
 } as const;
 
@@ -121,6 +134,18 @@ export function hasCharts(plan: PlanKey): boolean {
 
 export function getMaxLogins(plan: PlanKey): number {
   return PLANS[plan].maxLogins;
+}
+
+export function hasActionHistory(plan: PlanKey): boolean {
+  return PLANS[plan].hasActionHistory;
+}
+
+export function hasFaceId(plan: PlanKey): boolean {
+  return PLANS[plan].hasFaceId;
+}
+
+export function hasPrioritySupport(plan: PlanKey): boolean {
+  return PLANS[plan].hasPrioritySupport;
 }
 
 export function isRouteAllowed(plan: PlanKey, route: string): boolean {
