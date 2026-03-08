@@ -30,15 +30,26 @@ export default function DashboardLayout() {
 
   const plan = (company?.plan || 'START') as PlanKey;
 
-  // Filter nav items based on plan
-  const navItems = allNavItems.filter(item => isRouteAllowed(plan, item.path));
+  // Filter nav items based on plan and role
+  const isOperator = user?.role === 'OPERATOR';
+  const navItems = allNavItems.filter(item => {
+    if (!isRouteAllowed(plan, item.path)) return false;
+    // Operators can only see Hisoblagich
+    if (isOperator && item.path !== '/dashboard/meter') return false;
+    return true;
+  });
 
   // Redirect if trying to access restricted route
   useEffect(() => {
     if (!isRouteAllowed(plan, location.pathname)) {
-      navigate('/dashboard');
+      navigate('/dashboard/meter');
+      return;
     }
-  }, [location.pathname, plan, navigate]);
+    // Operators can only access meter page
+    if (isOperator && location.pathname !== '/dashboard/meter') {
+      navigate('/dashboard/meter');
+    }
+  }, [location.pathname, plan, navigate, isOperator]);
 
   const handleLogout = () => { logout(); navigate('/'); };
   const isActive = (path: string) => location.pathname === path;
@@ -168,7 +179,7 @@ export default function DashboardLayout() {
             <h2 className="text-sm font-semibold text-foreground truncate">{stationName}</h2>
           </div>
           <div className="flex items-center gap-2">
-            <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : '👷 Ishchi'}</span>
+            <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : '🔧 Operator'}</span>
             <span className={cn("text-xs px-2 py-1 rounded-md font-medium", getPlanColor())}>
               {plan === 'PREMIUM' && <Crown className="h-3 w-3 inline mr-1" />}
               {plan}

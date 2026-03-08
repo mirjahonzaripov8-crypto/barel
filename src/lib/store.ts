@@ -18,6 +18,7 @@ export interface DayRecord {
   }[];
   expenses: { reason: string; amount: number }[];
   terminal: number;
+  savedAt?: string; // ISO timestamp for 30-min edit window
 }
 
 export interface Company {
@@ -56,7 +57,7 @@ export interface CompanyUser {
   login: string;
   password: string;
   name: string;
-  role: 'BOSS' | 'WORKER';
+  role: 'BOSS' | 'OPERATOR';
 }
 
 export interface LogEntry {
@@ -326,7 +327,7 @@ export function seedDemoData() {
     promocode: 'DEMO',
     users: [
       { login: 'demo', password: 'demo', name: 'Zaripov Mansur', role: 'BOSS' },
-      { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'WORKER' },
+      { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'OPERATOR' },
     ],
     data: demoData,
     conf: {

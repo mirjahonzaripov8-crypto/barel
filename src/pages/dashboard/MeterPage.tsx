@@ -17,6 +17,12 @@ export default function MeterPage() {
   const [expenses, setExpenses] = useState<{ reason: string; amount: number }[]>([]);
   const [terminal, setTerminal] = useState(0);
   const [isExistingRecord, setIsExistingRecord] = useState(false);
+  const [savedAt, setSavedAt] = useState<string | null>(null);
+
+  const isOperator = user?.role === 'OPERATOR';
+
+  // Check if 30-min edit window expired for operators
+  const isEditExpired = isOperator && savedAt && (Date.now() - new Date(savedAt).getTime() > 30 * 60 * 1000);
 
   // Get the latest end value for a fuel type from all saved data (up to but not including current date)
   const getPreviousEnd = useCallback((fuelType: string, beforeDate: string): number => {
@@ -38,6 +44,7 @@ export default function MeterPage() {
     const existing = company.data.find(d => d.date === date);
     if (existing) {
       setIsExistingRecord(true);
+      setSavedAt(existing.savedAt || null);
       setOperator(existing.operator);
       setFuels(existing.fuels.map(f => ({
         type: f.type,
@@ -52,6 +59,7 @@ export default function MeterPage() {
       setTerminal(existing.terminal || 0);
     } else {
       setIsExistingRecord(false);
+      setSavedAt(null);
       // New day - "Oxirgi hisoblagich" (start) = previous day's end value
       setFuels(company.fuelTypes.map(ft => {
         const prevEnd = getPreviousEnd(ft.name, date);
@@ -132,14 +140,17 @@ export default function MeterPage() {
   };
 
   const save = () => {
+    if (isEditExpired) { toast.error("30 daqiqa o'tdi, tahrirlash mumkin emas!"); return; }
     if (!date || !operator.trim()) { toast.error("Sana va operatorni kiriting!"); return; }
 
     const hasEnd = fuels.some(f => f.end > 0);
     if (!hasEnd) { toast.error("Kamida bitta yoqilg'i uchun oxirgi ko'rsatkichni kiriting!"); return; }
 
+    const now = new Date().toISOString();
+
     updateCompany(company.key, c => {
       const existing = c.data.findIndex(d => d.date === date);
-      const record = { date, operator, fuels, expenses, terminal };
+      const record = { date, operator, fuels, expenses, terminal, savedAt: now };
       if (existing >= 0) {
         c.data[existing] = record;
       } else {
@@ -151,6 +162,7 @@ export default function MeterPage() {
     addLog(company.key, user?.login || '', 'Hisoblagich', `${date} uchun ma'lumotlar saqlandi`);
     refreshCompany();
     setIsExistingRecord(true);
+    setSavedAt(now);
 
     // "Oxirgi yangi" → "Oxirgi hisoblagich" ga o'tkazish (keyingi kiritish uchun)
     setFuels(prev => prev.map(f => ({
@@ -164,16 +176,25 @@ export default function MeterPage() {
     sendTelegramNotification();
   };
 
-  const isLocked = company.locks.main;
+  const isLocked = company.locks.main || !!isEditExpired;
 
   const totalSales = fuels.reduce((s, f) => s + f.sold * f.price, 0);
   const totalExpenses = expenses.reduce((s, e) => s + e.amount, 0);
+
+  // For operators: hide tannarx field (boss only)
+  const showTannarx = !isOperator;
 
   return (
     <div>
       <div className="flex items-center gap-3 mb-6">
         <h1 className="text-2xl font-bold text-foreground">KUNLIK HISOBLAGICH</h1>
-        {isLocked && <span className="bg-destructive/10 text-destructive text-xs font-medium px-2 py-1 rounded-md">🔒 BLOKLANGAN</span>}
+        {company.locks.main && <span className="bg-destructive/10 text-destructive text-xs font-medium px-2 py-1 rounded-md">🔒 BLOKLANGAN</span>}
+        {isEditExpired && <span className="bg-destructive/10 text-destructive text-xs font-medium px-2 py-1 rounded-md">⏰ 30 daqiqa o'tdi</span>}
+        {isOperator && savedAt && !isEditExpired && (
+          <span className="bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-md">
+            ⏱️ {Math.max(0, 30 - Math.floor((Date.now() - new Date(savedAt).getTime()) / 60000))} daqiqa qoldi
+          </span>
+        )}
       </div>
 
       <div className="bg-card border border-border rounded-lg p-4 md:p-6">
@@ -244,7 +265,7 @@ export default function MeterPage() {
                   <span className="text-xs font-semibold text-success">Prixod (kirish)</span>
                 </div>
                 <div><Label className="text-xs">Kirgan miqdor ({company.fuelTypes.find(ft => ft.name === f.type)?.unit || 'L'})</Label><Input type="number" value={f.prixod || ''} onChange={e => updateFuel(i, 'prixod', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>
-                <div><Label className="text-xs">Tannarx (so'm)</Label><Input type="number" value={f.tannarx || ''} onChange={e => updateFuel(i, 'tannarx', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>
+                {showTannarx && <div><Label className="text-xs">Tannarx (so'm)</Label><Input type="number" value={f.tannarx || ''} onChange={e => updateFuel(i, 'tannarx', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>}
               </div>
             </div>
           ))}
