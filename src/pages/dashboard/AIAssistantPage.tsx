@@ -213,6 +213,80 @@ function generateAnswer(question: string, company: any): string {
   return resp;
 }
 
+function FeaturePaymentSection({ request, onPaid, companyKey }: { request: FeatureRequest; onPaid: () => void; companyKey: string }) {
+  const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const card = getAdminCard();
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setReceiptBase64(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const submitPayment = () => {
+    if (!receiptBase64) return;
+    setUploading(true);
+
+    // Create payment record for admin to see
+    const payment: Payment = {
+      id: `pay_feat_${Date.now()}`,
+      companyKey,
+      amount: request.price || 0,
+      payment_date: new Date().toISOString(),
+      status: 'pending',
+      receipt_base64: receiptBase64,
+    };
+    addPayment(payment);
+
+    // Update feature request status
+    updateFeatureRequest(request.id, (req: FeatureRequest) => ({
+      ...req,
+      status: 'paid' as const,
+      updated_at: new Date().toISOString(),
+    }));
+
+    toast.success("Chek yuborildi! Admin tez orada tasdiqlaydi.");
+    setUploading(false);
+    onPaid();
+  };
+
+  return (
+    <div className="mt-3 space-y-3">
+      <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-4">
+        <p className="text-xs text-muted-foreground mb-1">To'lov kartasi:</p>
+        {card.cardNumber ? (
+          <>
+            <p className="text-lg font-bold text-foreground tracking-widest">{card.cardNumber}</p>
+            <p className="text-sm text-muted-foreground">{card.cardHolder}</p>
+          </>
+        ) : (
+          <p className="text-sm text-muted-foreground">Admin karta ma'lumotlarini hali kiritmagan.</p>
+        )}
+        {request.price && (
+          <p className="text-sm font-bold text-primary mt-2">To'lov summasi: {formatCurrency(request.price)}</p>
+        )}
+      </div>
+
+      <label className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
+        <Upload className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium text-foreground">
+          {receiptBase64 ? '✅ Chek yuklandi' : 'Chek rasmini yuklang'}
+        </span>
+        <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+      </label>
+
+      {receiptBase64 && (
+        <Button onClick={submitPayment} className="w-full" disabled={uploading}>
+          <CreditCard className="h-4 w-4 mr-2" /> To'lovni yuborish
+        </Button>
+      )}
+    </div>
+  );
+}
+
 export default function AIAssistantPage() {
   const { company } = useAuth();
   const [input, setInput] = useState('');
