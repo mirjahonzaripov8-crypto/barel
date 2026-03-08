@@ -78,7 +78,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     clearSession();
-    setState({ isLoggedIn: false, isSuperAdmin: false, user: null, company: null });
+    setState({ isLoggedIn: false, isSuperAdmin: false, isLooker: false, user: null, company: null });
   }, []);
 
   return (
