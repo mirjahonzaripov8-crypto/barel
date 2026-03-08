@@ -39,11 +39,6 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-function LookerRoute({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn, isLooker } = useAuth();
-  if (!isLoggedIn || !isLooker) return <Navigate to="/login" replace />;
-  return <>{children}</>;
-}
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
   const { isLoggedIn, isSuperAdmin, isLooker, company } = useAuth();
