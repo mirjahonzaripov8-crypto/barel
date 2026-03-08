@@ -185,3 +185,17 @@ export function getNavItemsForPlan(plan: PlanKey): readonly string[] {
   if (!planConfig) return PLANS.START.allowedRoutes;
   return planConfig.allowedRoutes;
 }
+
+// Get plan features merged with active custom features
+export function getPlanFeaturesWithCustom(plan: PlanKey): string[] {
+  const base = [...PLANS[plan].features];
+  const active = getActiveFeaturesByPlan(plan);
+  const testing = getTestingFeaturesByPlan(plan);
+  for (const f of active) {
+    base.push(`✨ ${f.title}`);
+  }
+  for (const f of testing) {
+    base.push(`🧪 ${f.title} (test)`);
+  }
+  return base;
+}
