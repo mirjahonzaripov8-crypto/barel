@@ -7,15 +7,21 @@ export default function HomePage() {
   const { company } = useAuth();
   if (!company) return null;
 
-  const fuelStats = company.fuelTypes.map(ft => {
-    const lastDay = company.data[company.data.length - 1];
-    const fuel = lastDay?.fuels.find(f => f.type === ft.name);
-    return {
-      name: ft.name,
-      unit: ft.unit,
-      remaining: fuel ? fuel.end : 0,
-      lastSold: fuel ? fuel.sold : 0,
-    };
+  const lastDay = company.data[company.data.length - 1];
+  const fuelStats = company.fuelTypes.flatMap(ft => {
+    const count = ft.meterCount || 1;
+    const meters = [];
+    for (let m = 0; m < count; m++) {
+      const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+      const fuel = lastDay?.fuels.find(f => f.type === label);
+      meters.push({
+        name: label,
+        unit: ft.unit,
+        remaining: fuel ? fuel.end : 0,
+        lastSold: fuel ? fuel.sold : 0,
+      });
+    }
+    return meters;
   });
 
   const chartData = company.data.slice(-7).map(d => ({
