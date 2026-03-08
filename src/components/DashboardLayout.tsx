@@ -188,9 +188,11 @@ export default function DashboardLayout() {
           </div>
         </header>
         <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
-          <div className="animate-fade-in">
-            <Outlet />
-          </div>
+          <SubscriptionGuard>
+            <div className="animate-fade-in">
+              <Outlet />
+            </div>
+          </SubscriptionGuard>
         </main>
       </div>
     </div>
