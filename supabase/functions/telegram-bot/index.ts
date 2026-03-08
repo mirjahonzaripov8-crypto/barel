@@ -55,30 +55,37 @@ async function deleteSession(supabase: any, chatId: string) {
   await supabase.from('telegram_sessions').delete().eq('chat_id', chatId);
 }
 
-// Authenticate operator against company_data in telegram_settings
+// Authenticate operator against company_users table
 async function authenticateOperator(supabase: any, login: string, password: string) {
-  const { data: allSettings } = await supabase
+  // Find user in company_users table
+  const { data: users } = await supabase
+    .from('company_users')
+    .select('*')
+    .eq('login', login)
+    .eq('password', password)
+    .limit(1);
+
+  if (!users || users.length === 0) return null;
+
+  const user = users[0];
+
+  // Get boss chat_id and fuel types from telegram_settings
+  const { data: setting } = await supabase
     .from('telegram_settings')
-    .select('company_key, chat_id, company_data')
-    .eq('enabled', true);
+    .select('chat_id, company_data')
+    .eq('company_key', user.company_key)
+    .eq('enabled', true)
+    .maybeSingle();
 
-  if (!allSettings) return null;
+  const cd = setting?.company_data || {};
 
-  for (const setting of allSettings) {
-    const cd = setting.company_data;
-    if (!cd || !cd.users) continue;
-    const user = cd.users.find((u: any) => u.login === login && u.password === password);
-    if (user) {
-      return {
-        user,
-        companyKey: setting.company_key,
-        bossChatId: setting.chat_id,
-        fuelTypes: cd.fuelTypes || [],
-        companyName: cd.companyName || '',
-      };
-    }
-  }
-  return null;
+  return {
+    user: { login: user.login, name: user.name, role: user.role },
+    companyKey: user.company_key,
+    bossChatId: setting?.chat_id || '',
+    fuelTypes: cd.fuelTypes || [],
+    companyName: user.company_name || cd.companyName || '',
+  };
 }
 
 function makeButtons(labels: string[], prefix: string, columns = 2): any[][] {
