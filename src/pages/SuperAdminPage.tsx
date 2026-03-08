@@ -70,6 +70,10 @@ export default function SuperAdminPage() {
   const [featurePromptOpen, setFeaturePromptOpen] = useState(false);
   const [featurePrompt, setFeaturePrompt] = useState('');
 
+  // Card info
+  const [cardNumber, setCardNumber] = useState(() => getAdminCard().cardNumber);
+  const [cardHolder, setCardHolder] = useState(() => getAdminCard().cardHolder);
+
   const companies = getCompanies();
   const payments = getPayments();
   const featureRequests = getFeatureRequests();
