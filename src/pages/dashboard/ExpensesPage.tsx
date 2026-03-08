@@ -4,7 +4,9 @@ import { formatCurrency, formatDate, getMonthAgoStr, getTodayStr, isInRange } fr
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { MinusCircle } from 'lucide-react';
+import { MinusCircle, FileDown } from 'lucide-react';
+import { createPdf, addTable, addSummaryRow, downloadPdf, formatNum } from '@/lib/pdf';
+import { toast } from 'sonner';
 
 export default function ExpensesPage() {
   const { company } = useAuth();
