@@ -661,6 +661,40 @@ export default function SuperAdminPage() {
         {tab === 'faceid' && (
           <FaceIdSection />
         )}
+
+        {/* CONTACTS */}
+        {tab === 'contacts' && (
+          <div className="animate-fade-in">
+            <h1 className="text-2xl font-extrabold text-foreground mb-6">Kontakt ma'lumotlari</h1>
+            <p className="text-sm text-muted-foreground mb-6">
+              Bu ma'lumotlar landing sahifada va boshqa joylarda ko'rinadi.
+            </p>
+            <div className="bg-card border border-border rounded-xl p-6 max-w-lg space-y-4">
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Telefon raqam</label>
+                <Input value={contactPhone} onChange={e => setContactPhone(e.target.value)} placeholder="+998..." />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Telegram Bot</label>
+                <Input value={contactTelegramBot} onChange={e => setContactTelegramBot(e.target.value)} placeholder="@bot_username" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Telegram kanal</label>
+                <Input value={contactTelegramChannel} onChange={e => setContactTelegramChannel(e.target.value)} placeholder="https://t.me/..." />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Instagram</label>
+                <Input value={contactInstagram} onChange={e => setContactInstagram(e.target.value)} placeholder="https://instagram.com/..." />
+              </div>
+              <Button onClick={() => {
+                saveContacts({ phone: contactPhone, telegramBot: contactTelegramBot, telegramChannel: contactTelegramChannel, instagram: contactInstagram });
+                toast.success("Kontakt ma'lumotlari saqlandi!");
+              }}>
+                Saqlash
+              </Button>
+            </div>
+          </div>
+        )}
       </main>
 
       {/* Security Confirmation Dialog */}
