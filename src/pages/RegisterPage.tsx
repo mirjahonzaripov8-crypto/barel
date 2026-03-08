@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, ArrowLeft, ArrowRight, Check } from 'lucide-react';
+import { Zap, ArrowLeft, ArrowRight, Check, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { registerCompany, type FuelType } from '@/lib/store';
 import { PLANS, type PlanKey } from '@/lib/helpers';
@@ -27,6 +27,7 @@ export default function RegisterPage() {
     fuelTypes: defaultFuels.map(f => ({ ...f, selected: true })),
     plan: (searchParams.get('plan') as PlanKey) || 'PRO' as PlanKey,
     promocode: '', login: '', password: '',
+    securityPassword: '',
   });
 
   const update = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
@@ -44,7 +45,7 @@ export default function RegisterPage() {
     if (step === 4 && form.fuelTypes.filter(f => f.selected).length === 0) {
       toast.error("Kamida bitta yoqilg'i turini tanlang!"); return;
     }
-    setStep(s => Math.min(s + 1, 6));
+    setStep(s => Math.min(s + 1, 7));
   };
 
   const back = () => setStep(s => Math.max(s - 1, 1));
@@ -56,6 +57,9 @@ export default function RegisterPage() {
     if (form.password.length < 4) {
       toast.error("Parol kamida 4 ta belgidan iborat bo'lsin!"); return;
     }
+    if (!form.securityPassword.trim() || form.securityPassword.length < 4) {
+      toast.error("Xavfsizlik paroli kamida 4 ta belgidan iborat bo'lsin!"); return;
+    }
     const result = registerCompany({
       firstName: form.firstName, lastName: form.lastName,
       companyName: form.companyName, phone: form.phone,
@@ -63,6 +67,7 @@ export default function RegisterPage() {
       fuelTypes: form.fuelTypes.filter(f => f.selected).map(({ name, unit }) => ({ name, unit })),
       plan: form.plan, login: form.login, password: form.password,
       promocode: form.promocode || undefined,
+      securityPassword: form.securityPassword,
     });
     if (result.success) {
       toast.success("Muvaffaqiyatli ro'yxatdan o'tdingiz! 7 kunlik bepul sinov boshlandi.");
@@ -93,9 +98,9 @@ export default function RegisterPage() {
               <Zap className="h-7 w-7 text-primary" />
               <span className="text-xl font-bold text-foreground">BAREL<span className="text-primary">.uz</span></span>
             </div>
-            <p className="text-muted-foreground text-sm">Ro'yxatdan o'tish — Qadam {step}/6</p>
+            <p className="text-muted-foreground text-sm">Ro'yxatdan o'tish — Qadam {step}/7</p>
             <div className="flex gap-1 mt-3 justify-center">
-              {[1,2,3,4,5,6].map(s => (
+              {[1,2,3,4,5,6,7].map(s => (
                 <div key={s} className={`h-1.5 w-8 rounded-full transition-colors ${s <= step ? 'bg-primary' : 'bg-border'}`} />
               ))}
             </div>
@@ -163,6 +168,21 @@ export default function RegisterPage() {
               <div><Label>Parol</Label><Input type="password" value={form.password} onChange={e => update('password', e.target.value)} placeholder="Kamida 4 ta belgi" className="mt-1" /></div>
             </div>
           )}
+          {step === 7 && (
+            <div className="space-y-4 animate-fade-in">
+              <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-lg border border-border mb-2">
+                <ShieldCheck className="h-6 w-6 text-primary shrink-0" />
+                <div>
+                  <p className="font-medium text-foreground text-sm">Xavfsizlik paroli</p>
+                  <p className="text-xs text-muted-foreground">Bu parol arxiv tahrirlash va xavfsizlik sozlamalarini ochish uchun ishlatiladi</p>
+                </div>
+              </div>
+              <div>
+                <Label>Xavfsizlik paroli</Label>
+                <Input type="password" value={form.securityPassword} onChange={e => update('securityPassword', e.target.value)} placeholder="Maxsus xavfsizlik paroli (kamida 4 ta belgi)" className="mt-1" />
+              </div>
+            </div>
+          )}
 
           <div className="flex justify-between mt-8">
             {step > 1 ? (
@@ -170,7 +190,7 @@ export default function RegisterPage() {
             ) : (
               <Button variant="ghost" onClick={() => navigate('/')}><ArrowLeft className="h-4 w-4 mr-1" /> Orqaga</Button>
             )}
-            {step < 6 ? (
+            {step < 7 ? (
               <Button onClick={next}>Keyingi <ArrowRight className="h-4 w-4 ml-1" /></Button>
             ) : (
               <Button onClick={finish} className="shadow-button hover:-translate-y-0.5 transition-transform">RO'YXATDAN O'TISH</Button>

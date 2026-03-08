@@ -227,6 +227,7 @@ export function registerCompany(data: {
     locks: { plomba: false, start: false, main: false },
     ops: { op1: 'Operator 1', op2: 'Operator 2' },
     plomba: [],
+    securityPassword: data.securityPassword,
     created_at: new Date().toISOString(),
   };
 
