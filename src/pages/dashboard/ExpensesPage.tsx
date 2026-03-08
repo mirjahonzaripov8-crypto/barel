@@ -25,6 +25,16 @@ export default function ExpensesPage() {
   );
   const total = filtered.reduce((s, e) => s + e.amount, 0);
 
+  const exportPdf = () => {
+    const doc = createPdf('XARAJATLAR', from, to);
+    let y = 36;
+    const body = filtered.map(e => [formatDate(e.date), e.reason, formatNum(e.amount) + ' so\'m', e.operator]);
+    y = addTable(doc, [['Sana', 'Sabab', 'Summa', 'Operator']], body, y);
+    y = addSummaryRow(doc, 'JAMI XARAJATLAR:', formatNum(total) + ' so\'m', y);
+    downloadPdf(doc, `xarajatlar_${from}_${to}.pdf`);
+    toast.success('PDF yuklandi!');
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">XARAJATLAR</h1>
