@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateCompany } from '@/lib/store';
+import { updateCompany, getCompanies } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Shield, Lock, Unlock, Trash2, KeyRound } from 'lucide-react';
+import { Shield, Lock, Unlock, Trash2, KeyRound, UserCog, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SecurityPage() {
@@ -13,6 +13,12 @@ export default function SecurityPage() {
   const [op2, setOp2] = useState(company?.ops.op2 || '');
   const [authenticated, setAuthenticated] = useState(false);
   const [pwInput, setPwInput] = useState('');
+
+  // Credential change state
+  const [newLogin, setNewLogin] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [showNewPw, setShowNewPw] = useState(false);
+  const [editingUser, setEditingUser] = useState<string | null>(null);
 
   if (!company) return null;
 
@@ -92,6 +98,51 @@ export default function SecurityPage() {
     toast.success("Xavfsizlik paroli o'zgartirildi!");
   };
 
+  const startEditUser = (login: string) => {
+    const u = company.users.find(u => u.login === login);
+    if (!u) return;
+    setEditingUser(login);
+    setNewLogin(u.login);
+    setNewPassword(u.password);
+    setShowNewPw(false);
+  };
+
+  const saveUserCredentials = () => {
+    if (!editingUser) return;
+    if (!newLogin.trim() || newLogin.trim().length < 3) {
+      toast.error("Login kamida 3 ta belgidan iborat bo'lsin!");
+      return;
+    }
+    if (!newPassword.trim() || newPassword.trim().length < 3) {
+      toast.error("Parol kamida 3 ta belgidan iborat bo'lsin!");
+      return;
+    }
+    // Check login uniqueness across all companies
+    const allCompanies = getCompanies();
+    for (const c of allCompanies) {
+      for (const u of c.users) {
+        if (u.login === newLogin.trim() && !(c.key === company.key && u.login === editingUser)) {
+          toast.error("Bu login allaqachon band!");
+          return;
+        }
+      }
+    }
+
+    updateCompany(company.key, c => ({
+      ...c,
+      users: c.users.map(u =>
+        u.login === editingUser
+          ? { ...u, login: newLogin.trim(), password: newPassword.trim() }
+          : u
+      ),
+    }));
+    refreshCompany();
+    toast.success("Login va parol muvaffaqiyatli o'zgartirildi!");
+    setEditingUser(null);
+    setNewLogin('');
+    setNewPassword('');
+  };
+
   const locks = [
     { key: 'plomba' as const, label: 'Plomba kiritish' },
     { key: 'start' as const, label: 'Boshlang\'ich raqam' },
@@ -123,8 +174,67 @@ export default function SecurityPage() {
           </div>
         </div>
 
-        {/* Operators, password change & Reset */}
+        {/* Right column */}
         <div className="space-y-6">
+          {/* User credentials */}
+          <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+            <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+              <UserCog className="h-4 w-4 text-primary" /> Foydalanuvchilar login/parol
+            </h3>
+            <div className="space-y-3">
+              {company.users.map(u => (
+                <div key={u.login} className="flex items-center justify-between p-3 border border-border rounded-lg">
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{u.name}</p>
+                    <p className="text-xs text-muted-foreground">{u.role} • {u.login}</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => startEditUser(u.login)}
+                  >
+                    O'zgartirish
+                  </Button>
+                </div>
+              ))}
+            </div>
+
+            {editingUser && (
+              <div className="mt-4 p-4 border border-primary/30 rounded-lg bg-primary/5 space-y-3">
+                <h4 className="text-sm font-semibold text-foreground">
+                  «{company.users.find(u => u.login === editingUser)?.name}» ma'lumotlarini o'zgartirish
+                </h4>
+                <div>
+                  <Label className="text-xs">Yangi login</Label>
+                  <Input value={newLogin} onChange={e => setNewLogin(e.target.value)} className="mt-1" />
+                </div>
+                <div>
+                  <Label className="text-xs">Yangi parol</Label>
+                  <div className="relative mt-1">
+                    <Input
+                      type={showNewPw ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={e => setNewPassword(e.target.value)}
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPw(!showNewPw)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showNewPw ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button onClick={saveUserCredentials} className="flex-1">SAQLASH</Button>
+                  <Button variant="outline" onClick={() => setEditingUser(null)} className="flex-1">BEKOR QILISH</Button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Operators */}
           <div className="bg-card border border-border rounded-lg p-4 md:p-6">
             <h3 className="font-semibold text-foreground mb-4">Operatorlar</h3>
             <div className="space-y-3">
