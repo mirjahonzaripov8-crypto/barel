@@ -75,6 +75,33 @@ export default function HomePage() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Custom Features */}
+      {customFeatures.length > 0 && (
+        <div className="mt-6">
+          <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" /> Maxsus funksiyalar
+          </h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {customFeatures.map(cf => (
+              <button
+                key={cf.id}
+                onClick={() => navigate(`/dashboard/feature/${cf.id}`)}
+                className="bg-card border border-border rounded-lg p-4 text-left hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 transition-all duration-300"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-semibold text-foreground">{cf.title}</span>
+                  {cf.status === 'testing' && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-warning/10 text-warning font-medium">test</span>
+                  )}
+                </div>
+                {cf.description && <p className="text-xs text-muted-foreground line-clamp-2">{cf.description}</p>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
