@@ -54,6 +54,32 @@ export default function ArchivePage() {
     toast.success("Tahrirlandi!");
   };
 
+  const exportPdf = () => {
+    const doc = createPdf('ARXIV VA TARIX', from, to);
+    let y = 36;
+
+    // Sales table
+    doc.setFontSize(12);
+    doc.text('Sotuv ma\'lumotlari', 14, y);
+    y += 6;
+    const salesBody = rows.map(r => [
+      formatDate(r.date), r.type, formatNum(r.start), formatNum(r.sold),
+      formatNum(r.end), formatNum(r.price), formatNum(r.total)
+    ]);
+    const totalSales = rows.reduce((s, r) => s + r.total, 0);
+    y = addTable(doc, [['Sana', 'Turi', 'Boshl.', 'Sotilgan', 'Oxirgi', 'Narx', 'Jami']], salesBody, y);
+    y = addSummaryRow(doc, 'JAMI SOTUV:', formatNum(totalSales) + ' so\'m', y);
+
+    // Expenses
+    y += 6;
+    const totalExp = rows.reduce((s, r) => s + r.expenses, 0);
+    y = addSummaryRow(doc, 'JAMI XARAJATLAR:', formatNum(totalExp) + ' so\'m', y);
+    y = addSummaryRow(doc, 'NAQD PUL:', formatNum(totalSales - totalExp) + ' so\'m', y);
+
+    downloadPdf(doc, `arxiv_${from}_${to}.pdf`);
+    toast.success('PDF yuklandi!');
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">ARXIV VA TARIX</h1>
