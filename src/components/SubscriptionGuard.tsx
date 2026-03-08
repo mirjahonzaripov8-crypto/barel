@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { checkSubscription, getAdminCard, addPayment, type Payment } from '@/lib/store';
-import { formatCurrency } from '@/lib/helpers';
+import { formatCurrency, PLANS } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { CreditCard, AlertTriangle, Upload, Clock } from 'lucide-react';
 import {
