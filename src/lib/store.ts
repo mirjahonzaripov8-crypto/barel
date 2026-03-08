@@ -48,6 +48,7 @@ export interface Company {
   };
   ops: { op1: string; op2: string };
   plomba: PlombaRecord[];
+  securityPassword: string;
   created_at: string;
 }
 
@@ -186,6 +187,7 @@ export function registerCompany(data: {
   login: string;
   password: string;
   promocode?: string;
+  securityPassword: string;
 }): { success: boolean; error?: string } {
   const companies = getCompanies();
   
@@ -225,6 +227,7 @@ export function registerCompany(data: {
     locks: { plomba: false, start: false, main: false },
     ops: { op1: 'Operator 1', op2: 'Operator 2' },
     plomba: [],
+    securityPassword: data.securityPassword,
     created_at: new Date().toISOString(),
   };
 
@@ -338,6 +341,7 @@ export function seedDemoData() {
     plomba: [
       { date: new Date().toISOString().split('T')[0], numbers: ['PL-001', 'PL-002', 'PL-003'], status: 'Yaxshi' },
     ],
+    securityPassword: '20113',
     created_at: new Date(Date.now() - 86400000 * 10).toISOString(),
   };
 

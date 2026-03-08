@@ -4,15 +4,52 @@ import { updateCompany } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Shield, Lock, Unlock, Trash2 } from 'lucide-react';
+import { Shield, Lock, Unlock, Trash2, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SecurityPage() {
   const { company, refreshCompany } = useAuth();
   const [op1, setOp1] = useState(company?.ops.op1 || '');
   const [op2, setOp2] = useState(company?.ops.op2 || '');
+  const [authenticated, setAuthenticated] = useState(false);
+  const [pwInput, setPwInput] = useState('');
 
   if (!company) return null;
+
+  const checkPassword = () => {
+    if (pwInput === company.securityPassword) {
+      setAuthenticated(true);
+      setPwInput('');
+      toast.success("Tasdiqlandi!");
+    } else {
+      toast.error("Parol noto'g'ri!");
+    }
+  };
+
+  if (!authenticated) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-foreground mb-6">XAVFSIZLIK</h1>
+        <div className="max-w-md mx-auto">
+          <div className="bg-card border border-border rounded-lg p-6 text-center">
+            <KeyRound className="h-12 w-12 text-primary mx-auto mb-4" />
+            <h3 className="font-semibold text-foreground mb-2">Xavfsizlik paroli talab etiladi</h3>
+            <p className="text-sm text-muted-foreground mb-4">Bu bo'limga kirish uchun xavfsizlik parolingizni kiriting</p>
+            <div className="space-y-3">
+              <Input
+                type="password"
+                value={pwInput}
+                onChange={e => setPwInput(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && checkPassword()}
+                placeholder="Xavfsizlik paroli"
+              />
+              <Button onClick={checkPassword} className="w-full">KIRISH</Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const toggleLock = (key: 'plomba' | 'start' | 'main') => {
     updateCompany(company.key, c => ({
@@ -43,6 +80,16 @@ export default function SecurityPage() {
     }));
     refreshCompany();
     toast.success("Tizim tozalandi!");
+  };
+
+  const changeSecurityPassword = () => {
+    const newPw = prompt("Yangi xavfsizlik parolini kiriting (kamida 4 ta belgi):");
+    if (!newPw || newPw.length < 4) {
+      toast.error("Parol kamida 4 ta belgidan iborat bo'lsin!"); return;
+    }
+    updateCompany(company.key, c => ({ ...c, securityPassword: newPw }));
+    refreshCompany();
+    toast.success("Xavfsizlik paroli o'zgartirildi!");
   };
 
   const locks = [
@@ -76,7 +123,7 @@ export default function SecurityPage() {
           </div>
         </div>
 
-        {/* Operators & Reset */}
+        {/* Operators, password change & Reset */}
         <div className="space-y-6">
           <div className="bg-card border border-border rounded-lg p-4 md:p-6">
             <h3 className="font-semibold text-foreground mb-4">Operatorlar</h3>
@@ -85,6 +132,12 @@ export default function SecurityPage() {
               <div><Label className="text-xs">Operator 2</Label><Input value={op2} onChange={e => setOp2(e.target.value)} className="mt-1" /></div>
               <Button onClick={saveOps} className="w-full">OPERATORLARNI SAQLASH</Button>
             </div>
+          </div>
+
+          <div className="bg-card border border-border rounded-lg p-4 md:p-6">
+            <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2"><KeyRound className="h-4 w-4 text-primary" /> Xavfsizlik paroli</h3>
+            <p className="text-sm text-muted-foreground mb-3">Arxiv tahrirlash va xavfsizlik bo'limi uchun ishlatiladi</p>
+            <Button variant="outline" onClick={changeSecurityPassword} className="w-full">PAROLNI O'ZGARTIRISH</Button>
           </div>
 
           <div className="bg-card border border-destructive/30 rounded-lg p-4 md:p-6">
