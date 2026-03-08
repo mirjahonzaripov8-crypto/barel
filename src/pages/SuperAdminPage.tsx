@@ -857,7 +857,10 @@ export default function SuperAdminPage() {
                                 testedAt: new Date().toISOString(),
                                 updated_at: new Date().toISOString(),
                               }));
-                              toast.success("Demo test boshlandi! Funksiyani tekshiring.");
+                              // Create demo company with the target plan
+                              createOrUpdateDemoCompany(cf.targetPlan, cf.title);
+                              setDemoFeatureTitle(cf.title);
+                              setDemoDialogOpen(true);
                               forceRefresh();
                             });
                           }}>
