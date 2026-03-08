@@ -57,7 +57,7 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
     }, 10 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [company, getExpiryInfo, isLooker]);
+  }, [company, getExpiryInfo]);
 
   useEffect(() => {
     if (!company || !user || user.role !== 'BOSS' || isLooker) return;
