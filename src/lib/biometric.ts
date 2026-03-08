@@ -42,6 +42,10 @@ export function isWebAuthnSupported(): boolean {
   return !!(window.PublicKeyCredential && navigator.credentials);
 }
 
+export function isInIframe(): boolean {
+  try { return window.self !== window.top; } catch { return true; }
+}
+
 // Register a new biometric credential
 export async function registerBiometric(loginKey: string): Promise<boolean> {
   if (!isWebAuthnSupported()) return false;
