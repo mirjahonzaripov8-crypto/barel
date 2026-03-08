@@ -28,6 +28,7 @@ export interface Company {
   phone: string;
   stations: string[];
   fuelTypes: FuelType[];
+  stationConfigs?: { fuelTypes: FuelType[] }[]; // per-station fuel configs
   plan: 'START' | 'STANDART' | 'PREMIUM';
   subscription: {
     status: 'trial' | 'active' | 'expired' | 'suspended';
