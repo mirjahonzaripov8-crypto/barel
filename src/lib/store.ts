@@ -183,7 +183,7 @@ export function registerCompany(data: {
   phone: string;
   stations: string[];
   fuelTypes: FuelType[];
-  plan: 'START' | 'PRO' | 'PREMIUM';
+  plan: 'START' | 'STANDART' | 'PREMIUM';
   login: string;
   password: string;
   promocode?: string;
