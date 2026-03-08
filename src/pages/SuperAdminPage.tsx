@@ -12,11 +12,15 @@ import {
 } from '@/components/ui/dialog';
 import {
   Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle,
-  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet
+  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet, ScanFace
 } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  isWebAuthnSupported, registerBiometric, verifyBiometric,
+  hasBiometricRegistered
+} from '@/lib/biometric';
 
-type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card';
+type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card' | 'faceid';
 
 function getStatusLabel(status: string) {
   switch (status) {
@@ -301,6 +305,7 @@ export default function SuperAdminPage() {
     { id: 'features' as Tab, icon: Sparkles, label: "Funksiya so'rovlar", badge: pendingFeatures.length },
     { id: 'card' as Tab, icon: Wallet, label: "Karta ma'lumotlari" },
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Xabarlar' },
+    { id: 'faceid' as Tab, icon: ScanFace, label: 'Face ID' },
   ];
 
   const getFeatureStatusBadge = (status: FeatureRequest['status']) => {
@@ -644,6 +649,11 @@ export default function SuperAdminPage() {
             </div>
           </div>
         )}
+
+        {/* FACE ID */}
+        {tab === 'faceid' && (
+          <FaceIdSection />
+        )}
       </main>
 
       {/* Security Confirmation Dialog */}
@@ -821,6 +831,150 @@ function StatCard({ icon: Icon, label, value, color }: { icon: any; label: strin
       </div>
       <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
       <p className={`text-3xl font-extrabold mt-1 ${color || 'text-foreground'}`}>{value}</p>
+    </div>
+  );
+}
+
+function FaceIdSection() {
+  const [loading, setLoading] = useState(false);
+  const supported = isWebAuthnSupported();
+  const superadminRegistered = hasBiometricRegistered('superadmin');
+  const lookerRegistered = hasBiometricRegistered('looker');
+  const [, setRefresh] = useState(0);
+
+  const handleRegister = async (loginKey: string, label: string) => {
+    setLoading(true);
+    try {
+      const ok = await registerBiometric(loginKey);
+      if (ok) {
+        toast.success(`${label} uchun Face ID muvaffaqiyatli sozlandi!`);
+        setRefresh(r => r + 1);
+      } else {
+        toast.error("Face ID sozlab bo'lmadi.");
+      }
+    } catch {
+      toast.error("Xatolik yuz berdi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleTest = async (loginKey: string, label: string) => {
+    setLoading(true);
+    try {
+      const ok = await verifyBiometric(loginKey);
+      if (ok) {
+        toast.success(`${label} — yuz muvaffaqiyatli tasdiqlandi! ✅`);
+      } else {
+        toast.error(`${label} — yuz tanilmadi! ❌`);
+      }
+    } catch {
+      toast.error("Tekshirish xatosi.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!supported) {
+    return (
+      <div className="animate-fade-in">
+        <h1 className="text-2xl font-extrabold text-foreground mb-6">Face ID</h1>
+        <div className="bg-card border border-border rounded-xl p-6">
+          <p className="text-destructive font-medium">Bu qurilma/brauzer Face ID / biometrikni qo'llab-quvvatlamaydi.</p>
+          <p className="text-sm text-muted-foreground mt-2">HTTPS va zamonaviy brauzer (Safari, Chrome) kerak.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="animate-fade-in">
+      <h1 className="text-2xl font-extrabold text-foreground mb-6">Face ID boshqaruv</h1>
+      <p className="text-sm text-muted-foreground mb-6">
+        Maxfiy loginlar uchun Face ID / biometrik himoyani sozlang. Ro'yxatdan o'tkazilgandan so'ng, kirish uchun yuzingiz talab qilinadi.
+      </p>
+
+      <div className="grid sm:grid-cols-2 gap-6 max-w-2xl">
+        {/* SuperAdmin */}
+        <div className="bg-card border border-border rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <ScanFace className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Super Admin</h3>
+              <p className="text-xs text-muted-foreground">ZARIPOVM login</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mb-4">
+            <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${
+              superadminRegistered ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
+            }`}>
+              {superadminRegistered ? '✅ Sozlangan' : '⚠️ Sozlanmagan'}
+            </span>
+          </div>
+          <div className="space-y-2">
+            <Button
+              className="w-full"
+              onClick={() => handleRegister('superadmin', 'Super Admin')}
+              disabled={loading}
+            >
+              <ScanFace className="h-4 w-4 mr-2" />
+              {superadminRegistered ? "Qayta sozlash" : "Face ID sozlash"}
+            </Button>
+            {superadminRegistered && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handleTest('superadmin', 'Super Admin')}
+                disabled={loading}
+              >
+                Test qilish
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Looker */}
+        <div className="bg-card border border-border rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
+              <ScanFace className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-foreground">Kuzatuvchi</h3>
+              <p className="text-xs text-muted-foreground">looker54789 login</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 mb-4">
+            <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${
+              lookerRegistered ? 'bg-success/10 text-success' : 'bg-warning/10 text-warning'
+            }`}>
+              {lookerRegistered ? '✅ Sozlangan' : '⚠️ Sozlanmagan'}
+            </span>
+          </div>
+          <div className="space-y-2">
+            <Button
+              className="w-full"
+              onClick={() => handleRegister('looker', 'Kuzatuvchi')}
+              disabled={loading}
+            >
+              <ScanFace className="h-4 w-4 mr-2" />
+              {lookerRegistered ? "Qayta sozlash" : "Face ID sozlash"}
+            </Button>
+            {lookerRegistered && (
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => handleTest('looker', 'Kuzatuvchi')}
+                disabled={loading}
+              >
+                Test qilish
+              </Button>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
