@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCompanies, saveCompanies, getPayments, savePayments, getFeatureRequests, saveFeatureRequests, type Company, type Payment, type FeatureRequest } from '@/lib/store';
+import { getCompanies, saveCompanies, getPayments, savePayments, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, type Company, type Payment, type FeatureRequest } from '@/lib/store';
 import { formatCurrency, formatDate, formatNumber, PLANS, type PlanKey } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
