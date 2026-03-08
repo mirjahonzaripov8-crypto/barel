@@ -313,7 +313,7 @@ export default function RegisterPage() {
                 <Input value={form.promocode} onChange={e => update('promocode', e.target.value)} placeholder="Do'stingizning promokodi" className="mt-1" />
                 {form.promocode.trim() && (
                   <p className={`text-xs mt-1 ${promoValid ? 'text-success' : 'text-destructive'}`}>
-                    {promoValid ? '✅ Promokod qabul qilindi — 5% chegirma!' : '❌ Promokod topilmadi'}
+                    {promoValid ? '✅ Promokod qabul qilindi — 10% chegirma!' : '❌ Promokod topilmadi'}
                   </p>
                 )}
               </div>
