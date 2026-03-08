@@ -275,26 +275,34 @@ export default function RegisterPage() {
               )}
 
               {(Object.keys(PLANS) as PlanKey[]).map(key => {
-                const p = calculatePlanPrice(key, validStationCount);
-                const hasDiscount = p.discount > 0;
+                const p = calculatePlanPrice(key, validStationCount, promoValid);
+                const hasStationDiscount = p.discount > 0;
+                const hasAnyDiscount = hasStationDiscount || p.promoDiscount > 0;
                 return (
                   <button key={key} onClick={() => update('plan', key)} className={`w-full text-left p-4 rounded-lg border transition-all ${form.plan === key ? 'border-primary bg-secondary ring-2 ring-primary/20' : 'border-border hover:border-primary/30'}`}>
                     <div className="flex justify-between items-center">
                       <span className="font-bold text-foreground">{PLANS[key].name}</span>
                       <div className="text-right">
-                        {hasDiscount && (
+                        {hasAnyDiscount && (
                           <span className="text-xs text-muted-foreground line-through mr-2">
                             {p.originalTotal.toLocaleString()} so'm
                           </span>
                         )}
-                        <span className="font-bold text-primary">{p.total.toLocaleString()} so'm/oy</span>
+                        <span className="font-bold text-primary">{p.finalTotal.toLocaleString()} so'm/oy</span>
                       </div>
                     </div>
-                    {validStationCount > 1 && (
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {validStationCount} ta zapravka × {PLANS[key].price.toLocaleString()} so'm
-                        {hasDiscount && <span className="text-success font-semibold"> − {p.discount.toLocaleString()} so'm chegirma</span>}
-                      </p>
+                    {(validStationCount > 1 || p.promoDiscount > 0) && (
+                      <div className="text-xs text-muted-foreground mt-0.5 space-y-0.5">
+                        {validStationCount > 1 && (
+                          <p>
+                            {validStationCount} ta zapravka × {PLANS[key].price.toLocaleString()} so'm
+                            {hasStationDiscount && <span className="text-success font-semibold"> − {p.discount.toLocaleString()} so'm chegirma</span>}
+                          </p>
+                        )}
+                        {p.promoDiscount > 0 && (
+                          <p className="text-primary font-semibold">🎁 Promokod: −5% (−{p.promoDiscount.toLocaleString()} so'm)</p>
+                        )}
+                      </div>
                     )}
                     <p className="text-xs text-muted-foreground mt-1">{PLANS[key].features.join(' • ')}</p>
                   </button>
@@ -303,6 +311,11 @@ export default function RegisterPage() {
               <div className="mt-4">
                 <Label>Promokod (ixtiyoriy)</Label>
                 <Input value={form.promocode} onChange={e => update('promocode', e.target.value)} placeholder="Do'stingizning promokodi" className="mt-1" />
+                {form.promocode.trim() && (
+                  <p className={`text-xs mt-1 ${promoValid ? 'text-success' : 'text-destructive'}`}>
+                    {promoValid ? '✅ Promokod qabul qilindi — 5% chegirma!' : '❌ Promokod topilmadi'}
+                  </p>
+                )}
               </div>
             </div>
           )}
