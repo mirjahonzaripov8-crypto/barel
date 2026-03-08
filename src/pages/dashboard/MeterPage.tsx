@@ -5,7 +5,7 @@ import { updateCompany, addLog } from '@/lib/store';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Gauge, Plus, Trash2 } from 'lucide-react';
+import { Gauge, Plus, Trash2, PackagePlus } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function MeterPage() {
@@ -13,7 +13,7 @@ export default function MeterPage() {
   const [date, setDate] = useState(getTodayStr());
   const [operator, setOperator] = useState(company?.ops.op1 || '');
   const [fuels, setFuels] = useState(
-    company?.fuelTypes.map(ft => ({ type: ft.name, start: 0, sold: 0, end: 0, price: 0 })) || []
+    company?.fuelTypes.map(ft => ({ type: ft.name, start: 0, sold: 0, end: 0, price: 0, prixod: 0, tannarx: 0 })) || []
   );
   const [expenses, setExpenses] = useState<{ reason: string; amount: number }[]>([]);
   const [terminal, setTerminal] = useState(0);
@@ -76,13 +76,25 @@ export default function MeterPage() {
         {/* Fuel inputs */}
         <div className="space-y-4 mb-6">
           {fuels.map((f, i) => (
-            <div key={f.type} className="p-3 border border-border rounded-lg bg-secondary/20">
-              <p className="text-sm font-semibold text-foreground mb-2 flex items-center gap-2"><Gauge className="h-4 w-4 text-primary" />{f.type}</p>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div key={f.type} className="p-4 border border-border rounded-lg bg-secondary/20">
+              <p className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2"><Gauge className="h-4 w-4 text-primary" />{f.type}</p>
+              
+              {/* Sotuv (sales) row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
                 <div><Label className="text-xs">Boshlang'ich</Label><Input type="number" value={f.start || ''} onChange={e => updateFuel(i, 'start', Number(e.target.value))} className="mt-1" disabled={isLocked || company.locks.start} /></div>
                 <div><Label className="text-xs">Sotilgan</Label><Input type="number" value={f.sold || ''} onChange={e => updateFuel(i, 'sold', Number(e.target.value))} className="mt-1" disabled={isLocked} /></div>
                 <div><Label className="text-xs">Oxirgi</Label><Input type="number" value={f.end || ''} className="mt-1 bg-muted" disabled /></div>
-                <div><Label className="text-xs">Narx</Label><Input type="number" value={f.price || ''} onChange={e => updateFuel(i, 'price', Number(e.target.value))} className="mt-1" disabled={isLocked} /></div>
+                <div><Label className="text-xs">Sotuv narxi</Label><Input type="number" value={f.price || ''} onChange={e => updateFuel(i, 'price', Number(e.target.value))} className="mt-1" disabled={isLocked} /></div>
+              </div>
+
+              {/* Prixod (incoming) row */}
+              <div className="grid grid-cols-2 gap-3 p-3 bg-success/5 border border-success/20 rounded-lg">
+                <div className="flex items-center gap-2 col-span-2 mb-1">
+                  <PackagePlus className="h-4 w-4 text-success" />
+                  <span className="text-xs font-semibold text-success">Prixod (kirish)</span>
+                </div>
+                <div><Label className="text-xs">Kirgan miqdor ({company.fuelTypes.find(ft => ft.name === f.type)?.unit || 'L'})</Label><Input type="number" value={f.prixod || ''} onChange={e => updateFuel(i, 'prixod', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>
+                <div><Label className="text-xs">Tannarx (so'm)</Label><Input type="number" value={f.tannarx || ''} onChange={e => updateFuel(i, 'tannarx', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>
               </div>
             </div>
           ))}

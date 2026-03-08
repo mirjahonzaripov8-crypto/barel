@@ -13,6 +13,8 @@ export interface DayRecord {
     sold: number;
     end: number;
     price: number;
+    prixod?: number;
+    tannarx?: number;
   }[];
   expenses: { reason: string; amount: number }[];
   terminal: number;
