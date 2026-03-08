@@ -875,13 +875,26 @@ function FaceIdSection() {
     }
   };
 
-  if (!supported) {
+  const inIframe = isInIframe();
+
+  if (!supported || inIframe) {
     return (
       <div className="animate-fade-in">
         <h1 className="text-2xl font-extrabold text-foreground mb-6">Face ID</h1>
         <div className="bg-card border border-border rounded-xl p-6">
-          <p className="text-destructive font-medium">Bu qurilma/brauzer Face ID / biometrikni qo'llab-quvvatlamaydi.</p>
-          <p className="text-sm text-muted-foreground mt-2">HTTPS va zamonaviy brauzer (Safari, Chrome) kerak.</p>
+          {inIframe ? (
+            <>
+              <p className="text-warning font-medium">⚠️ Face ID preview rejimida ishlamaydi!</p>
+              <p className="text-sm text-muted-foreground mt-2">
+                Face ID faqat <b>publish qilingan</b> saytda ishlaydi. Ilovani publish qiling, so'ng to'liq sahifada Face ID ni sozlang.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-destructive font-medium">Bu qurilma/brauzer Face ID / biometrikni qo'llab-quvvatlamaydi.</p>
+              <p className="text-sm text-muted-foreground mt-2">HTTPS va zamonaviy brauzer (Safari, Chrome) kerak.</p>
+            </>
+          )}
         </div>
       </div>
     );
