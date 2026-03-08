@@ -12,13 +12,13 @@ import { supabase } from '@/integrations/supabase/client';
 
 export default function SubscriptionGuard({ children }: { children: React.ReactNode }) {
   const { company, user, logout, isLooker } = useAuth();
-
-  // Looker bypasses subscription checks entirely
-  if (isLooker) return <>{children}</>;
   const [reminderOpen, setReminderOpen] = useState(false);
   const [hardLocked, setHardLocked] = useState(false);
   const [receiptBase64, setReceiptBase64] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+
+  // Looker bypasses subscription checks entirely
+  if (isLooker) return <>{children}</>;
 
   const card = getAdminCard();
 
