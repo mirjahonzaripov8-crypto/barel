@@ -48,7 +48,7 @@ export const PLANS = {
   START: { 
     name: 'Boshlang\'ich', 
     badge: '🥉',
-    price: 200000, 
+    price: 199999, 
     maxLogins: 3,
     description: 'Tizimni endi joriy etayotgan ixcham shoxobchalar uchun',
     features: [
