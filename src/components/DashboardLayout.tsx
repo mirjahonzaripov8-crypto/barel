@@ -24,7 +24,7 @@ const allNavItems = [
 ];
 
 export default function DashboardLayout() {
-  const { user, company, logout } = useAuth();
+  const { user, company, logout, isLooker } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
