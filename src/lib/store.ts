@@ -90,6 +90,7 @@ const STORAGE_KEYS = {
   CURRENT_STATION: 'barel_current_station',
   PAYMENTS: 'barel_payments',
   SUPERADMIN_KEY: 'ZARIPOVM',
+  SUPERADMIN_PASSWORD: '201116ZM',
 };
 
 function loadJSON<T>(key: string, fallback: T): T {
@@ -163,7 +164,7 @@ export function addPayment(payment: Payment) {
 
 // Auth
 export function authenticate(login: string, password: string): { success: boolean; isSuperAdmin?: boolean; user?: CompanyUser; companyKey?: string } {
-  if (login === STORAGE_KEYS.SUPERADMIN_KEY && password === 'admin2024') {
+  if (login.toUpperCase() === STORAGE_KEYS.SUPERADMIN_KEY && password === STORAGE_KEYS.SUPERADMIN_PASSWORD) {
     return { success: true, isSuperAdmin: true };
   }
   
