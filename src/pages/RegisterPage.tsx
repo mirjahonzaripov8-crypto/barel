@@ -88,6 +88,9 @@ export default function RegisterPage() {
   const toggleFuel = (i: number) => {
     const f = [...form.fuelTypes]; f[i] = { ...f[i], selected: !f[i].selected }; update('fuelTypes', f);
   };
+  const updateMeterCount = (i: number, count: number) => {
+    const f = [...form.fuelTypes]; f[i] = { ...f[i], meterCount: Math.max(1, Math.min(20, count)) }; update('fuelTypes', f);
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-secondary/60 to-background p-4">
