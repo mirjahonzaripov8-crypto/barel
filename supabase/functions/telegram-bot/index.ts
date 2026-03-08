@@ -343,9 +343,17 @@ Deno.serve(async (req) => {
             },
           });
 
+          // Show fuel buttons again with already added ones filtered out
+          const availableFuels = sessionData.availableFuels || ['Propan', 'AI-91', 'AI-92', 'AI-95', 'Dizel', 'Metan'];
+          const addedTypes = updatedFuels.map((f: any) => f.type);
+          const remainingButtons = availableFuels
+            .filter((ft: string) => !addedTypes.includes(ft))
+            .map((ft: string) => [{ text: `⛽ ${ft}`, callback_data: `fuel_${ft}` }]);
+          remainingButtons.push([{ text: '✅ Tayyor', callback_data: 'fuel_done' }]);
+
           await sendMessage(botToken, chatId,
-            `✅ <b>${fuelEntry.type}</b> qo'shildi!\n\n` +
-            `Yana yoqilg'i turini kiriting yoki "tayyor" deb yozing.`
+            `✅ <b>${fuelEntry.type}</b> qo'shildi!\n\n⛽ Keyingi yoqilg'ini tanlang:`,
+            { inline_keyboard: remainingButtons }
           );
           return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
         }
