@@ -21,7 +21,7 @@ import AIAssistantPage from "./pages/dashboard/AIAssistantPage";
 import TelegramPage from "./pages/dashboard/TelegramPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import CompanyViewPage from "./pages/CompanyViewPage";
-import LookerPage from "./pages/LookerPage";
+
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
