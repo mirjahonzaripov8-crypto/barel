@@ -4,7 +4,9 @@ import { formatCurrency, formatDate, getMonthAgoStr, getTodayStr, isInRange } fr
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { MinusCircle } from 'lucide-react';
+import { MinusCircle, FileDown } from 'lucide-react';
+import { createPdf, addTable, addSummaryRow, downloadPdf, formatNum } from '@/lib/pdf';
+import { toast } from 'sonner';
 
 export default function ExpensesPage() {
   const { company } = useAuth();
@@ -23,6 +25,16 @@ export default function ExpensesPage() {
   );
   const total = filtered.reduce((s, e) => s + e.amount, 0);
 
+  const exportPdf = () => {
+    const doc = createPdf('XARAJATLAR', from, to);
+    let y = 36;
+    const body = filtered.map(e => [formatDate(e.date), e.reason, formatNum(e.amount) + ' so\'m', e.operator]);
+    y = addTable(doc, [['Sana', 'Sabab', 'Summa', 'Operator']], body, y);
+    y = addSummaryRow(doc, 'JAMI XARAJATLAR:', formatNum(total) + ' so\'m', y);
+    downloadPdf(doc, `xarajatlar_${from}_${to}.pdf`);
+    toast.success('PDF yuklandi!');
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">XARAJATLAR</h1>
@@ -37,6 +49,7 @@ export default function ExpensesPage() {
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+          <Button onClick={exportPdf} variant="outline" className="gap-2"><FileDown className="h-4 w-4" />PDF yuklab olish</Button>
         </div>
 
         <div className="flex items-center gap-2 mb-4">

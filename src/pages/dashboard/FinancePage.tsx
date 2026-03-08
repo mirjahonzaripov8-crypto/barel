@@ -4,10 +4,11 @@ import { formatCurrency, getMonthAgoStr, getTodayStr, isInRange } from '@/lib/he
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, TrendingDown } from 'lucide-react';
+import { DollarSign, TrendingUp, TrendingDown, FileDown } from 'lucide-react';
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from 'recharts';
 import { updateCompany } from '@/lib/store';
 import { toast } from 'sonner';
+import { createPdf, addTable, addSummaryRow, downloadPdf, formatNum } from '@/lib/pdf';
 
 const COLORS = ['#2563EB', '#16a34a', '#d97706', '#dc2626', '#8b5cf6'];
 
@@ -41,6 +42,40 @@ export default function FinancePage() {
     toast.success("Sozlamalar saqlandi!");
   };
 
+  const exportPdf = () => {
+    const doc = createPdf('MOLIYA VA TAHLIL', from, to);
+    let y = 36;
+
+    // Summary
+    doc.setFontSize(12);
+    doc.text('Umumiy ko\'rsatkichlar', 14, y);
+    y += 6;
+    y = addTable(doc, [['Ko\'rsatkich', 'Summa']], [
+      ['Tushum', formatNum(revenue) + ' so\'m'],
+      ['Xarajatlar', formatNum(Math.round(expenses)) + ' so\'m'],
+      ['Tannarx (prixod)', formatNum(costTotal) + ' so\'m'],
+      ['SOF FOYDA', formatNum(net) + ' so\'m'],
+    ], y);
+
+    y += 8;
+    doc.setFontSize(12);
+    doc.text('Kunlik tafsilot', 14, y);
+    y += 6;
+
+    const body = filtered.map(d => {
+      const rev = d.fuels.reduce((a, f) => a + f.sold * f.price, 0);
+      const exp = d.expenses.reduce((a, e) => a + e.amount, 0);
+      const cost = d.fuels.reduce((a, f) => a + (f.prixod || 0) * (f.tannarx || 0), 0);
+      return [d.date, formatNum(rev), formatNum(exp), formatNum(cost), formatNum(rev - exp - cost)];
+    });
+
+    y = addTable(doc, [['Sana', 'Tushum', 'Xarajat', 'Tannarx', 'Foyda']], body, y);
+    y = addSummaryRow(doc, 'JAMI SOF FOYDA:', formatNum(net) + ' so\'m', y);
+
+    downloadPdf(doc, `moliya_${from}_${to}.pdf`);
+    toast.success('PDF yuklandi!');
+  };
+
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">MOLIYA VA TAHLIL</h1>
@@ -50,6 +85,7 @@ export default function FinancePage() {
         <div className="flex flex-wrap items-end gap-4 mb-6">
           <div><Label className="text-xs">Dan</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1 w-40" /></div>
           <div><Label className="text-xs">Gacha</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1 w-40" /></div>
+          <Button onClick={exportPdf} variant="outline" className="gap-2"><FileDown className="h-4 w-4" />PDF yuklab olish</Button>
         </div>
         <div className="grid sm:grid-cols-4 gap-4">
           <div className="bg-secondary/50 rounded-lg p-4">
