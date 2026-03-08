@@ -60,19 +60,25 @@ export default function MeterPage() {
     } else {
       setIsExistingRecord(false);
       setSavedAt(null);
-      // New day - "Oxirgi hisoblagich" (start) = previous day's end value
-      setFuels(company.fuelTypes.map(ft => {
-        const prevEnd = getPreviousEnd(ft.name, date);
-        return {
-          type: ft.name,
-          start: prevEnd,
-          sold: 0,
-          end: 0,
-          price: company.conf.prices[ft.name] || 0,
-          prixod: 0,
-          tannarx: 0,
-        };
-      }));
+      // New day - expand fuels based on meterCount
+      const expandedFuels: typeof fuels = [];
+      company.fuelTypes.forEach(ft => {
+        const count = ft.meterCount || 1;
+        for (let m = 0; m < count; m++) {
+          const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+          const prevEnd = getPreviousEnd(label, date);
+          expandedFuels.push({
+            type: label,
+            start: prevEnd,
+            sold: 0,
+            end: 0,
+            price: company.conf.prices[ft.name] || 0,
+            prixod: 0,
+            tannarx: 0,
+          });
+        }
+      });
+      setFuels(expandedFuels);
       setExpenses([]);
       setTerminal(0);
       setOperator(company.ops.op1 || '');
@@ -264,7 +270,7 @@ export default function MeterPage() {
                   <PackagePlus className="h-4 w-4 text-success" />
                   <span className="text-xs font-semibold text-success">Prixod (kirish)</span>
                 </div>
-                <div><Label className="text-xs">Kirgan miqdor ({company.fuelTypes.find(ft => ft.name === f.type)?.unit || 'L'})</Label><Input type="number" value={f.prixod || ''} onChange={e => updateFuel(i, 'prixod', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>
+                <div><Label className="text-xs">Kirgan miqdor ({company.fuelTypes.find(ft => f.type.startsWith(ft.name))?.unit || 'L'})</Label><Input type="number" value={f.prixod || ''} onChange={e => updateFuel(i, 'prixod', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>
                 {showTannarx && <div><Label className="text-xs">Tannarx (so'm)</Label><Input type="number" value={f.tannarx || ''} onChange={e => updateFuel(i, 'tannarx', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="0" /></div>}
               </div>
             </div>

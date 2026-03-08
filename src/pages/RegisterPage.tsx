@@ -8,13 +8,13 @@ import { toast } from 'sonner';
 import { registerCompany, type FuelType } from '@/lib/store';
 import { PLANS, type PlanKey } from '@/lib/helpers';
 
-const defaultFuels: FuelType[] = [
-  { name: 'Propan', unit: 'L' },
-  { name: 'AI-91', unit: 'L' },
-  { name: 'AI-92', unit: 'L' },
-  { name: 'AI-95', unit: 'L' },
-  { name: 'Dizel', unit: 'L' },
-  { name: 'Metan', unit: 'm³' },
+const defaultFuels: (FuelType & { selected?: boolean })[] = [
+  { name: 'Propan', unit: 'L', meterCount: 1 },
+  { name: 'AI-91', unit: 'L', meterCount: 1 },
+  { name: 'AI-92', unit: 'L', meterCount: 1 },
+  { name: 'AI-95', unit: 'L', meterCount: 1 },
+  { name: 'Dizel', unit: 'L', meterCount: 1 },
+  { name: 'Metan', unit: 'm³', meterCount: 1 },
 ];
 
 export default function RegisterPage() {
@@ -24,7 +24,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     firstName: '', lastName: '', companyName: '', phone: '',
     stations: [''],
-    fuelTypes: defaultFuels.map(f => ({ ...f, selected: true })),
+    fuelTypes: defaultFuels.map(f => ({ ...f, selected: true, meterCount: f.meterCount || 1 })),
     plan: (searchParams.get('plan') as PlanKey) || 'STANDART' as PlanKey,
     promocode: '', login: '', password: '',
     securityPassword: '',
@@ -64,7 +64,7 @@ export default function RegisterPage() {
       firstName: form.firstName, lastName: form.lastName,
       companyName: form.companyName, phone: form.phone,
       stations: form.stations.filter(s => s.trim()),
-      fuelTypes: form.fuelTypes.filter(f => f.selected).map(({ name, unit }) => ({ name, unit })),
+      fuelTypes: form.fuelTypes.filter(f => f.selected).map(({ name, unit, meterCount }) => ({ name, unit, meterCount: meterCount || 1 })),
       plan: form.plan, login: form.login, password: form.password,
       promocode: form.promocode || undefined,
       securityPassword: form.securityPassword,
@@ -87,6 +87,9 @@ export default function RegisterPage() {
   };
   const toggleFuel = (i: number) => {
     const f = [...form.fuelTypes]; f[i] = { ...f[i], selected: !f[i].selected }; update('fuelTypes', f);
+  };
+  const updateMeterCount = (i: number, count: number) => {
+    const f = [...form.fuelTypes]; f[i] = { ...f[i], meterCount: Math.max(1, Math.min(20, count)) }; update('fuelTypes', f);
   };
 
   return (
@@ -132,15 +135,31 @@ export default function RegisterPage() {
           )}
           {step === 4 && (
             <div className="space-y-3 animate-fade-in">
-              <Label>Yoqilg'i turlari</Label>
+              <Label>Yoqilg'i turlari va hisoblagichlar soni</Label>
+              <p className="text-xs text-muted-foreground">Har bir mahsulot uchun nechta hisoblagich (kolon) borligini belgilang</p>
               {form.fuelTypes.map((f, i) => (
-                <button key={f.name} onClick={() => toggleFuel(i)} className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors ${f.selected ? 'border-primary bg-secondary' : 'border-border'}`}>
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${f.selected ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
-                    {f.selected && <Check className="h-3 w-3 text-primary-foreground" />}
-                  </div>
-                  <span className="font-medium text-foreground">{f.name}</span>
-                  <span className="text-muted-foreground text-sm ml-auto">({f.unit})</span>
-                </button>
+                <div key={f.name} className={`w-full rounded-lg border transition-colors ${f.selected ? 'border-primary bg-secondary' : 'border-border'}`}>
+                  <button onClick={() => toggleFuel(i)} className="w-full flex items-center gap-3 p-3">
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${f.selected ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                      {f.selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                    <span className="font-medium text-foreground">{f.name}</span>
+                    <span className="text-muted-foreground text-sm ml-auto">({f.unit})</span>
+                  </button>
+                  {f.selected && (
+                    <div className="px-3 pb-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Hisoblagichlar soni:</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={f.meterCount || 1}
+                        onChange={e => updateMeterCount(i, Number(e.target.value))}
+                        className="w-20 h-8 text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
