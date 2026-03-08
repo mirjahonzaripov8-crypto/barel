@@ -59,6 +59,7 @@ export default function MeterPage() {
       setTerminal(existing.terminal || 0);
     } else {
       setIsExistingRecord(false);
+      setSavedAt(null);
       // New day - "Oxirgi hisoblagich" (start) = previous day's end value
       setFuels(company.fuelTypes.map(ft => {
         const prevEnd = getPreviousEnd(ft.name, date);
