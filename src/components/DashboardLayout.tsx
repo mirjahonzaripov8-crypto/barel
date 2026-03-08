@@ -24,7 +24,7 @@ const allNavItems = [
 ];
 
 export default function DashboardLayout() {
-  const { user, company, logout } = useAuth();
+  const { user, company, logout, isLooker } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -32,27 +32,30 @@ export default function DashboardLayout() {
   const plan = (company?.plan || 'START') as PlanKey;
 
   // Filter nav items based on plan and role
-  const isOperator = user?.role === 'OPERATOR';
+  const isOperator = user?.role === 'OPERATOR' && !isLooker;
   const navItems = allNavItems.filter(item => {
+    if (isLooker) return true; // Looker sees everything
     if (!isRouteAllowed(plan, item.path)) return false;
-    // Operators can only see Hisoblagich
     if (isOperator && item.path !== '/dashboard/meter') return false;
     return true;
   });
 
   // Redirect if trying to access restricted route
   useEffect(() => {
+    if (isLooker) return; // Looker bypasses all restrictions
     if (!isRouteAllowed(plan, location.pathname)) {
       navigate('/dashboard/meter');
       return;
     }
-    // Operators can only access meter page
     if (isOperator && location.pathname !== '/dashboard/meter') {
       navigate('/dashboard/meter');
     }
-  }, [location.pathname, plan, navigate, isOperator]);
+  }, [location.pathname, plan, navigate, isOperator, isLooker]);
 
-  const handleLogout = () => { logout(); navigate('/'); };
+  const handleLogout = () => {
+    logout();
+    navigate(isLooker ? '/looker' : '/');
+  };
   const isActive = (path: string) => location.pathname === path;
   const stationName = company?.stations?.[0] || company?.name || '';
 

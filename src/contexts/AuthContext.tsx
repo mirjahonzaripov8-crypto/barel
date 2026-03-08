@@ -9,14 +9,16 @@ import { syncCompanyUsersToDb } from '@/lib/syncUsers';
 interface AuthState {
   isLoggedIn: boolean;
   isSuperAdmin: boolean;
+  isLooker: boolean;
   user: { login: string; role: string; name: string; companyKey: string } | null;
   company: Company | null;
 }
 
 interface AuthContextType extends AuthState {
-  login: (username: string, password: string) => { success: boolean; error?: string; isSuperAdmin?: boolean };
+  login: (username: string, password: string) => { success: boolean; error?: string; isSuperAdmin?: boolean; isLooker?: boolean };
   logout: () => void;
   refreshCompany: () => void;
+  setLookerCompany: (companyKey: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -27,9 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const user = getCurrentUser();
     if (user) {
       const company = getCompanyByKey(user.companyKey);
-      return { isLoggedIn: true, isSuperAdmin: false, user, company: company || null };
+      return { isLoggedIn: true, isSuperAdmin: false, isLooker: false, user, company: company || null };
     }
-    return { isLoggedIn: false, isSuperAdmin: false, user: null, company: null };
+    return { isLoggedIn: false, isSuperAdmin: false, isLooker: false, user: null, company: null };
   });
 
   const refreshCompany = useCallback(() => {
@@ -39,13 +41,27 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.user]);
 
+  const setLookerCompany = useCallback((companyKey: string) => {
+    const company = getCompanyByKey(companyKey);
+    if (company) {
+      const userData = { login: '__looker__', role: 'BOSS', name: 'Kuzatuvchi', companyKey };
+      setCurrentUser(userData);
+      setCurrentCompanyKey(companyKey);
+      setState({ isLoggedIn: true, isSuperAdmin: false, isLooker: true, user: userData, company });
+    }
+  }, []);
+
   const login = useCallback((username: string, password: string) => {
     const result = authenticate(username, password);
     if (!result.success) {
       return { success: false, error: 'Login yoki parol noto\'g\'ri!' };
     }
+    if (result.isLooker) {
+      setState({ isLoggedIn: true, isSuperAdmin: false, isLooker: true, user: { login: '__looker__', role: 'BOSS', name: 'Kuzatuvchi', companyKey: '' }, company: null });
+      return { success: true, isLooker: true };
+    }
     if (result.isSuperAdmin) {
-      setState({ isLoggedIn: true, isSuperAdmin: true, user: { login: username, role: 'SUPERADMIN', name: 'Super Admin', companyKey: '' }, company: null });
+      setState({ isLoggedIn: true, isSuperAdmin: true, isLooker: false, user: { login: username, role: 'SUPERADMIN', name: 'Super Admin', companyKey: '' }, company: null });
       return { success: true, isSuperAdmin: true };
     }
     if (result.user && result.companyKey) {
@@ -54,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentCompanyKey(result.companyKey);
       const company = getCompanyByKey(result.companyKey);
       if (company) syncCompanyUsersToDb(company);
-      setState({ isLoggedIn: true, isSuperAdmin: false, user: userData, company: company || null });
+      setState({ isLoggedIn: true, isSuperAdmin: false, isLooker: false, user: userData, company: company || null });
       return { success: true };
     }
     return { success: false, error: 'Xatolik yuz berdi' };
@@ -62,11 +78,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => {
     clearSession();
-    setState({ isLoggedIn: false, isSuperAdmin: false, user: null, company: null });
+    setState({ isLoggedIn: false, isSuperAdmin: false, isLooker: false, user: null, company: null });
   }, []);
 
   return (
-    <AuthContext.Provider value={{ ...state, login, logout, refreshCompany }}>
+    <AuthContext.Provider value={{ ...state, login, logout, refreshCompany, setLookerCompany }}>
       {children}
     </AuthContext.Provider>
   );

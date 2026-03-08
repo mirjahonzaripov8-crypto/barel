@@ -21,14 +21,16 @@ import AIAssistantPage from "./pages/dashboard/AIAssistantPage";
 import TelegramPage from "./pages/dashboard/TelegramPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import CompanyViewPage from "./pages/CompanyViewPage";
+import LookerPage from "./pages/LookerPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn, isSuperAdmin } = useAuth();
+  const { isLoggedIn, isSuperAdmin, isLooker } = useAuth();
   if (!isLoggedIn) return <Navigate to="/login" replace />;
   if (isSuperAdmin) return <Navigate to="/admin" replace />;
+  if (isLooker && !useAuth().company) return <Navigate to="/looker" replace />;
   return <>{children}</>;
 }
 
@@ -38,9 +40,16 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function LookerRoute({ children }: { children: React.ReactNode }) {
+  const { isLoggedIn, isLooker } = useAuth();
+  if (!isLoggedIn || !isLooker) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn, isSuperAdmin } = useAuth();
+  const { isLoggedIn, isSuperAdmin, isLooker } = useAuth();
   if (isLoggedIn && isSuperAdmin) return <Navigate to="/admin" replace />;
+  if (isLoggedIn && isLooker && !useAuth().company) return <Navigate to="/looker" replace />;
   if (isLoggedIn) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
@@ -71,6 +80,7 @@ const App = () => (
             </Route>
             <Route path="/admin" element={<AdminRoute><SuperAdminPage /></AdminRoute>} />
             <Route path="/admin/company/:key" element={<AdminRoute><CompanyViewPage /></AdminRoute>} />
+            <Route path="/looker" element={<LookerRoute><LookerPage /></LookerRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
