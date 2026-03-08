@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateCompany, addLog } from '@/lib/store';
+import { updateCompany, addLog, getCompanyByKey } from '@/lib/store';
+import { syncCompanyUsersToDb } from '@/lib/syncUsers';
 import { formatDateTime, getMonthAgoStr, getTodayStr, isInRange } from '@/lib/helpers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
