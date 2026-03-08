@@ -4,9 +4,10 @@ import { formatCurrency, formatDate, getMonthAgoStr, getTodayStr, isInRange } fr
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Archive, Edit } from 'lucide-react';
+import { Archive, Edit, FileDown } from 'lucide-react';
 import { updateCompany } from '@/lib/store';
 import { toast } from 'sonner';
+import { createPdf, addTable, addSummaryRow, downloadPdf, formatNum } from '@/lib/pdf';
 
 export default function ArchivePage() {
   const { company, refreshCompany } = useAuth();
