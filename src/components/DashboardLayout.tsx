@@ -17,6 +17,7 @@ const allNavItems = [
   { path: '/dashboard/workers', icon: Users, label: 'Ishchilar', minPlan: 'PRO' },
   { path: '/dashboard/plomba', icon: Lock, label: 'Plomba', minPlan: 'PRO' },
   { path: '/dashboard/referrals', icon: Gift, label: 'Referallar', minPlan: 'PREMIUM' },
+  { path: '/dashboard/telegram', icon: Send, label: 'Telegram', minPlan: 'STANDART' },
   { path: '/dashboard/security', icon: Shield, label: 'Xavfsizlik' },
   { path: '/dashboard/ai', icon: Bot, label: 'AI yordamchi', minPlan: 'PREMIUM' },
 ];
