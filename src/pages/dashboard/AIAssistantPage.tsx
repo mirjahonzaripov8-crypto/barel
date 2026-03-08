@@ -1,31 +1,216 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Bot, Send, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/AuthContext';
+import { formatCurrency } from '@/lib/helpers';
 
 interface Message {
   role: 'user' | 'ai';
   text: string;
 }
 
+function getCompanyAnalysis(company: any) {
+  if (!company) return null;
+
+  const data = company.data || [];
+  const last7 = data.slice(-7);
+  const last30 = data.slice(-30);
+
+  // Revenue
+  const totalRevenue = last30.reduce((s: number, d: any) => s + d.fuels.reduce((a: number, f: any) => a + f.sold * f.price, 0), 0);
+  const totalExpenses = last30.reduce((s: number, d: any) => s + d.expenses.reduce((a: number, e: any) => a + e.amount, 0), 0);
+  const totalTerminal = last30.reduce((s: number, d: any) => s + (d.terminal || 0), 0);
+  const totalCost = last30.reduce((s: number, d: any) => s + d.fuels.reduce((a: number, f: any) => a + (f.prixod || 0) * (f.tannarx || 0), 0), 0);
+  const netProfit = totalRevenue - totalExpenses - totalCost;
+
+  // Per fuel stats
+  const fuelStats: Record<string, { sold: number; revenue: number; cost: number }> = {};
+  last30.forEach((d: any) => {
+    d.fuels.forEach((f: any) => {
+      if (!fuelStats[f.type]) fuelStats[f.type] = { sold: 0, revenue: 0, cost: 0 };
+      fuelStats[f.type].sold += f.sold;
+      fuelStats[f.type].revenue += f.sold * f.price;
+      fuelStats[f.type].cost += (f.prixod || 0) * (f.tannarx || 0);
+    });
+  });
+
+  // Last day
+  const lastDay = data[data.length - 1];
+  const lastDayRevenue = lastDay ? lastDay.fuels.reduce((a: number, f: any) => a + f.sold * f.price, 0) : 0;
+  const lastDayExpenses = lastDay ? lastDay.expenses.reduce((a: number, e: any) => a + e.amount, 0) : 0;
+
+  // Top expense reasons
+  const expReasons: Record<string, number> = {};
+  last30.forEach((d: any) => {
+    d.expenses.forEach((e: any) => {
+      expReasons[e.reason] = (expReasons[e.reason] || 0) + e.amount;
+    });
+  });
+  const topExpenses = Object.entries(expReasons).sort((a, b) => b[1] - a[1]).slice(0, 5);
+
+  // Daily avg
+  const avgDailyRevenue = last30.length > 0 ? totalRevenue / last30.length : 0;
+
+  return {
+    totalRevenue, totalExpenses, totalTerminal, totalCost, netProfit,
+    fuelStats, lastDay, lastDayRevenue, lastDayExpenses,
+    topExpenses, avgDailyRevenue, daysCount: last30.length,
+    plan: company.plan, stationsCount: company.stations.length,
+    fuelTypesCount: company.fuelTypes.length,
+    workersCount: company.users.length,
+  };
+}
+
+function generateAnswer(question: string, company: any): string {
+  const q = question.toLowerCase().trim();
+  const analysis = getCompanyAnalysis(company);
+
+  if (!analysis) return "Korxona ma'lumotlari topilmadi. Iltimos, tizimga qaytadan kiring.";
+  if (analysis.daysCount === 0) return "Hozircha hech qanday sotuv ma'lumoti kiritilmagan. Hisoblagich sahifasidan kunlik ma'lumot kiritishni boshlang.";
+
+  // Greeting
+  if (/salom|assalom|hey|privet|hi\b/.test(q)) {
+    return `Assalomu alaykum! Men BAREL.uz AI yordamchisiman. Korxonangiz haqida savollar bering — sotuv, xarajat, foyda, maslahat va boshqalar. Qanday yordam bera olaman?`;
+  }
+
+  // Revenue / sotuv
+  if (/tushum|sotuv|daromad|revenue|savdo/.test(q)) {
+    let resp = `📊 Oxirgi ${analysis.daysCount} kunda:\n\n`;
+    resp += `💰 Jami tushum: ${formatCurrency(analysis.totalRevenue)}\n`;
+    resp += `📈 Kunlik o'rtacha: ${formatCurrency(analysis.avgDailyRevenue)}\n\n`;
+    resp += `Mahsulotlar bo'yicha:\n`;
+    Object.entries(analysis.fuelStats).forEach(([name, s]: [string, any]) => {
+      resp += `• ${name}: ${s.sold.toLocaleString()} L — ${formatCurrency(s.revenue)}\n`;
+    });
+    if (analysis.lastDay) {
+      resp += `\nOxirgi kun tushumi: ${formatCurrency(analysis.lastDayRevenue)}`;
+    }
+    return resp;
+  }
+
+  // Expenses / xarajat
+  if (/xarajat|harajat|chiqim|expense|sarf/.test(q)) {
+    let resp = `📉 Oxirgi ${analysis.daysCount} kunda jami xarajat: ${formatCurrency(analysis.totalExpenses)}\n\n`;
+    if (analysis.topExpenses.length > 0) {
+      resp += `Eng katta xarajatlar:\n`;
+      analysis.topExpenses.forEach(([reason, amount]) => {
+        resp += `• ${reason}: ${formatCurrency(amount as number)}\n`;
+      });
+    }
+    if (analysis.totalExpenses > analysis.totalRevenue * 0.3) {
+      resp += `\n⚠️ Maslahat: Xarajatlaringiz tushumning ${Math.round(analysis.totalExpenses / analysis.totalRevenue * 100)}% ni tashkil qilmoqda. Bu ko'rsatkichni 20-25% gacha kamaytirishga harakat qiling.`;
+    }
+    return resp;
+  }
+
+  // Profit / foyda
+  if (/foyda|profit|daromad|sof|net|natija/.test(q)) {
+    let resp = `💵 Oxirgi ${analysis.daysCount} kun moliyaviy natijasi:\n\n`;
+    resp += `Tushum: ${formatCurrency(analysis.totalRevenue)}\n`;
+    resp += `Xarajatlar: ${formatCurrency(analysis.totalExpenses)}\n`;
+    resp += `Tannarx (prixod): ${formatCurrency(analysis.totalCost)}\n`;
+    resp += `Terminal: ${formatCurrency(analysis.totalTerminal)}\n`;
+    resp += `━━━━━━━━━━━━\n`;
+    resp += `SOF FOYDA: ${formatCurrency(analysis.netProfit)}\n\n`;
+    if (analysis.netProfit > 0) {
+      resp += `✅ Korxonangiz foydada ishlayapti.`;
+      const margin = Math.round(analysis.netProfit / analysis.totalRevenue * 100);
+      resp += ` Foyda margini: ${margin}%.`;
+      if (margin < 10) resp += ` Margini oshirish uchun tannarxni kamaytirish yoki narxlarni ko'tarish maslahat beriladi.`;
+    } else {
+      resp += `❌ Korxona zararда ishlayapti! Xarajatlarni kamaytiring yoki sotuv narxlarini qayta ko'rib chiqing.`;
+    }
+    return resp;
+  }
+
+  // Terminal
+  if (/terminal/.test(q)) {
+    const termPercent = analysis.totalRevenue > 0 ? Math.round(analysis.totalTerminal / analysis.totalRevenue * 100) : 0;
+    return `💳 Oxirgi ${analysis.daysCount} kunda terminal orqali: ${formatCurrency(analysis.totalTerminal)} (umumiy tushumning ${termPercent}%)\n\nNaqd pul: ${formatCurrency(analysis.totalRevenue - analysis.totalTerminal - analysis.totalExpenses)}`;
+  }
+
+  // Fuel / mahsulot
+  if (/mahsulot|yoqilgi|benzin|propan|dizel|metan|ai-9|fuel/.test(q)) {
+    let resp = `⛽ Mahsulotlar tahlili (oxirgi ${analysis.daysCount} kun):\n\n`;
+    Object.entries(analysis.fuelStats).forEach(([name, s]: [string, any]) => {
+      const profit = s.revenue - s.cost;
+      resp += `🔹 ${name}:\n`;
+      resp += `  Sotilgan: ${s.sold.toLocaleString()} L\n`;
+      resp += `  Tushum: ${formatCurrency(s.revenue)}\n`;
+      resp += `  Tannarx: ${formatCurrency(s.cost)}\n`;
+      resp += `  Foyda: ${formatCurrency(profit)}\n\n`;
+    });
+    // Best seller
+    const best = Object.entries(analysis.fuelStats).sort((a: any, b: any) => b[1].revenue - a[1].revenue)[0];
+    if (best) resp += `🏆 Eng ko'p sotuv: ${best[0]}`;
+    return resp;
+  }
+
+  // Maslahat / advice
+  if (/maslahat|tavsiya|advice|nima qilish|yaxshilash|taklif/.test(q)) {
+    let resp = `💡 Korxonangiz uchun maslahatlar:\n\n`;
+    const margin = analysis.totalRevenue > 0 ? analysis.netProfit / analysis.totalRevenue : 0;
+
+    if (margin < 0.1) resp += `1. ⚠️ Foyda margini past (${Math.round(margin*100)}%). Narxlarni ko'tarishni yoki arzonroq yetkazib beruvchi topishni o'ylang.\n\n`;
+    else resp += `1. ✅ Foyda margini yaxshi (${Math.round(margin*100)}%). Davom ettiring!\n\n`;
+
+    if (analysis.totalExpenses > analysis.totalRevenue * 0.25) {
+      resp += `2. 📉 Xarajatlar tushumning ${Math.round(analysis.totalExpenses/analysis.totalRevenue*100)}% ni tashkil qilmoqda. Eng katta xarajat: ${analysis.topExpenses[0]?.[0] || '—'} (${formatCurrency((analysis.topExpenses[0]?.[1] as number) || 0)}). Kamaytirishga harakat qiling.\n\n`;
+    } else {
+      resp += `2. ✅ Xarajatlar nazorat ostida.\n\n`;
+    }
+
+    const termPercent = analysis.totalRevenue > 0 ? analysis.totalTerminal / analysis.totalRevenue : 0;
+    resp += `3. 💳 Terminal ulushi: ${Math.round(termPercent*100)}%. ${termPercent > 0.5 ? 'Terminal to\'lovlar ko\'p — naqd pul oqimiga e\'tibor bering.' : 'Naqd pul oqimi yaxshi.'}\n\n`;
+
+    // Best/worst fuel
+    const fuels = Object.entries(analysis.fuelStats).map(([n, s]: [string, any]) => ({ name: n, profit: s.revenue - s.cost, sold: s.sold }));
+    const best = fuels.sort((a, b) => b.profit - a.profit)[0];
+    const worst = fuels.sort((a, b) => a.profit - b.profit)[0];
+    if (best) resp += `4. 🏆 Eng foydali mahsulot: ${best.name} (${formatCurrency(best.profit)} foyda)\n`;
+    if (worst && fuels.length > 1) resp += `5. 📊 Eng kam foydali: ${worst.name} — narxni oshirish yoki tannarxni kamaytirish maslahat.\n`;
+
+    return resp;
+  }
+
+  // Korxona info
+  if (/korxona|kompaniya|info|ma'lumot|haqida/.test(q)) {
+    return `🏢 Korxona: ${company.name}\n📋 Tarif: ${company.plan}\n⛽ Zapravkalar: ${analysis.stationsCount} ta\n🔧 Mahsulot turlari: ${analysis.fuelTypesCount} ta\n👥 Ishchilar: ${analysis.workersCount} ta\n📅 Ma'lumot: ${analysis.daysCount} kunlik`;
+  }
+
+  // Help
+  if (/yordam|help|nima|qanday|bilasanmi|nimalar/.test(q)) {
+    return `Men quyidagi savollarga javob bera olaman:\n\n• 💰 Sotuv va tushum haqida\n• 📉 Xarajatlar tahlili\n• 💵 Foyda va zarar\n• 💳 Terminal ma'lumotlari\n• ⛽ Mahsulotlar tahlili\n• 💡 Maslahat va tavsiyalar\n• 🏢 Korxona ma'lumotlari\n\nMasalan: "Foydamni ko'rsat", "Maslahat ber", "Qaysi mahsulot eng foydali?"`;
+  }
+
+  // Default — give general summary with advice
+  let resp = `Savolingizni tushundim. Mana korxonangiz haqida qisqacha:\n\n`;
+  resp += `💰 Oxirgi ${analysis.daysCount} kun tushumi: ${formatCurrency(analysis.totalRevenue)}\n`;
+  resp += `💵 Sof foyda: ${formatCurrency(analysis.netProfit)}\n`;
+  resp += `📉 Xarajatlar: ${formatCurrency(analysis.totalExpenses)}\n\n`;
+  resp += `Aniqroq javob olish uchun quyidagilarni so'rang:\n• "Sotuv qancha?"\n• "Xarajatlarim nima?"\n• "Maslahat ber"\n• "Qaysi mahsulot foydali?"`;
+  return resp;
+}
+
 export default function AIAssistantPage() {
+  const { company } = useAuth();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const chatRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
+  }, [messages]);
 
   const send = () => {
     if (!input.trim()) return;
     const userMsg: Message = { role: 'user', text: input };
     setMessages(prev => [...prev, userMsg]);
 
-    // Mock AI response
-    const responses = [
-      "Bugungi sotuv ma'lumotlarini ko'rib chiqaylik. Bosh sahifadagi grafikni tekshirib ko'ring.",
-      "Xarajatlarni kamaytirish uchun oylik doimiy xarajatlaringizni tekshiring.",
-      "Moliya sahifasida tannarx sozlamalarini yangilashni unutmang.",
-      "Hisoblagichda kunlik ma'lumotlarni o'z vaqtida kiritish muhim.",
-      "Referral tizimidan foydalanib, qo'shimcha chegirmalar oling!",
-    ];
-    const aiMsg: Message = { role: 'ai', text: responses[Math.floor(Math.random() * responses.length)] };
-    setTimeout(() => setMessages(prev => [...prev, aiMsg]), 500);
+    const answer = generateAnswer(input, company);
+    setTimeout(() => {
+      setMessages(prev => [...prev, { role: 'ai', text: answer }]);
+    }, 300);
     setInput('');
   };
 
@@ -37,24 +222,29 @@ export default function AIAssistantPage() {
       </div>
 
       <div className="bg-card border border-border rounded-lg flex flex-col h-[500px]">
-        {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <Bot className="h-12 w-12 text-primary/30 mb-3" />
-              <p className="text-muted-foreground">Savolingizni yozing, men yordam beraman!</p>
+              <p className="text-muted-foreground mb-2">Savolingizni yozing — korxonangiz ma'lumotlarini tahlil qilaman!</p>
+              <div className="flex flex-wrap gap-2 justify-center mt-3">
+                {['Sotuv qancha?', 'Maslahat ber', 'Foydamni ko\'rsat', 'Xarajatlarim'].map(s => (
+                  <button key={s} onClick={() => { setInput(s); }} className="text-xs bg-secondary hover:bg-secondary/80 text-foreground px-3 py-1.5 rounded-full border border-border transition-colors">
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[80%] rounded-lg px-4 py-2.5 text-sm ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'}`}>
+              <div className={`max-w-[85%] rounded-lg px-4 py-2.5 text-sm whitespace-pre-line ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'}`}>
                 {m.text}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Input */}
         <div className="border-t border-border p-3 flex gap-2">
           <textarea
             value={input}
