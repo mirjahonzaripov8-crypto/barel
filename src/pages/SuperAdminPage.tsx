@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCompanies, saveCompanies, getPayments, savePayments, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, type Company, type Payment, type FeatureRequest } from '@/lib/store';
@@ -82,6 +82,12 @@ export default function SuperAdminPage() {
   const activeCount = companies.filter(c => c.subscription.status === 'active' || c.subscription.status === 'trial').length;
 
   const forceRefresh = () => setRefresh(r => r + 1);
+
+  // Auto-refresh every 5 seconds to pick up new payments/requests
+  useEffect(() => {
+    const interval = setInterval(() => setRefresh(r => r + 1), 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const requireSecurity = useCallback((action: () => void) => {
     setPendingAction(() => action);
