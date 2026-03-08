@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Zap, ArrowLeft, ArrowRight, Check, ShieldCheck, Fuel, Percent } from 'lucide-react';
 import { toast } from 'sonner';
-import { registerCompany, type FuelType } from '@/lib/store';
+import { registerCompany, getCompanies, type FuelType } from '@/lib/store';
 import { PLANS, calculatePlanPrice, type PlanKey } from '@/lib/helpers';
 
 const defaultFuelList: (FuelType & { selected?: boolean })[] = [
