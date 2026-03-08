@@ -26,7 +26,7 @@ export interface Company {
   phone: string;
   stations: string[];
   fuelTypes: FuelType[];
-  plan: 'START' | 'PRO' | 'PREMIUM';
+  plan: 'START' | 'STANDART' | 'PREMIUM';
   subscription: {
     status: 'trial' | 'active' | 'expired' | 'suspended';
     trial_end_date: string;
@@ -183,7 +183,7 @@ export function registerCompany(data: {
   phone: string;
   stations: string[];
   fuelTypes: FuelType[];
-  plan: 'START' | 'PRO' | 'PREMIUM';
+  plan: 'START' | 'STANDART' | 'PREMIUM';
   login: string;
   password: string;
   promocode?: string;
@@ -321,7 +321,7 @@ export function seedDemoData() {
     phone: '+998 91 123 45 67',
     stations: ['BUXORO-1', 'QORAKUL-2'],
     fuelTypes: demoFuels,
-    plan: 'PRO',
+    plan: 'STANDART',
     subscription: { status: 'trial', trial_end_date: trialEnd.toISOString() },
     promocode: 'DEMO',
     users: [

@@ -105,10 +105,10 @@ export default function LandingPage() {
         <div className="grid md:grid-cols-3 gap-6 stagger-children">
           {(Object.keys(PLANS) as PlanKey[]).map((key) => {
             const plan = PLANS[key];
-            const isPro = key === 'PRO';
+            const isPopular = 'popular' in plan && plan.popular;
             return (
-              <div key={key} className={`relative bg-card border rounded-lg p-6 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ${isPro ? 'border-primary shadow-lg ring-2 ring-primary/20' : 'border-secondary'}`}>
-                {isPro && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">MASHHUR</div>}
+              <div key={key} className={`relative bg-card border rounded-lg p-6 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 ${isPopular ? 'border-primary shadow-lg ring-2 ring-primary/20' : 'border-secondary'}`}>
+                {isPopular && <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary text-primary-foreground text-xs font-bold px-3 py-1 rounded-full">ENG OMMABOP</div>}
                 <h3 className="text-xl font-bold text-foreground mb-2">{plan.name}</h3>
                 <div className="mb-4">
                   <span className="text-3xl font-extrabold text-primary">{plan.price.toLocaleString()}</span>
@@ -121,7 +121,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Button onClick={() => navigate(`/register?plan=${key}`)} className="w-full" variant={isPro ? 'default' : 'outline'}>
+                <Button onClick={() => navigate(`/register?plan=${key}`)} className="w-full" variant={isPopular ? 'default' : 'outline'}>
                   7 kun bepul
                 </Button>
               </div>

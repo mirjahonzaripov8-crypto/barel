@@ -46,7 +46,7 @@ export default function DashboardLayout() {
   const getPlanColor = () => {
     switch (plan) {
       case 'PREMIUM': return 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white';
-      case 'PRO': return 'bg-gradient-to-r from-blue-500 to-purple-500 text-white';
+      case 'STANDART': return 'bg-gradient-to-r from-blue-500 to-purple-500 text-white';
       default: return 'bg-secondary text-foreground';
     }
   };
