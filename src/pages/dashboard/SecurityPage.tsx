@@ -8,7 +8,7 @@ import { Shield, Lock, Unlock, Trash2, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SecurityPage() {
-  const { company, refreshCompany, isLooker } = useAuth();
+  const { company, refreshCompany, user } = useAuth();
   const [op1, setOp1] = useState(company?.ops.op1 || '');
   const [op2, setOp2] = useState(company?.ops.op2 || '');
   const [authenticated, setAuthenticated] = useState(false);
