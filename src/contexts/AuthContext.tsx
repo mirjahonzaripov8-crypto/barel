@@ -1,3 +1,4 @@
+// Auth context provider
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import {
   getCurrentUser, setCurrentUser, clearSession,
