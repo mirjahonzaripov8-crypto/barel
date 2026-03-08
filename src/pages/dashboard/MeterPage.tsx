@@ -101,9 +101,20 @@ export default function MeterPage() {
               
               {/* Sotuv (sales) row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
-                <div><Label className="text-xs">Boshlang'ich</Label><Input type="number" value={f.start || ''} onChange={e => updateFuel(i, 'start', Number(e.target.value))} className="mt-1" disabled={isLocked || company.locks.start} /></div>
-                <div><Label className="text-xs">Sotilgan</Label><Input type="number" value={f.sold || ''} onChange={e => updateFuel(i, 'sold', Number(e.target.value))} className="mt-1" disabled={isLocked} /></div>
-                <div><Label className="text-xs">Oxirgi</Label><Input type="number" value={f.end || ''} className="mt-1 bg-muted" disabled /></div>
+                <div>
+                  <Label className="text-xs">Boshlang'ich</Label>
+                  <Input type="number" value={f.start || ''} onChange={e => updateFuel(i, 'start', Number(e.target.value))} className="mt-1 bg-muted/50" disabled={isLocked || f.start > 0} />
+                  <span className="text-[10px] text-muted-foreground">Oldingi kundan</span>
+                </div>
+                <div>
+                  <Label className="text-xs">Oxirgi</Label>
+                  <Input type="number" value={f.end || ''} onChange={e => updateFuel(i, 'end', Number(e.target.value))} className="mt-1" disabled={isLocked} placeholder="Hisoblagich ko'rsatkichi" />
+                </div>
+                <div>
+                  <Label className="text-xs">Sotilgan</Label>
+                  <Input type="number" value={f.sold || ''} className="mt-1 bg-muted font-semibold" disabled />
+                  <span className="text-[10px] text-muted-foreground">Avtomatik</span>
+                </div>
                 <div><Label className="text-xs">Sotuv narxi</Label><Input type="number" value={f.price || ''} onChange={e => updateFuel(i, 'price', Number(e.target.value))} className="mt-1" disabled={isLocked} /></div>
               </div>
 
