@@ -68,9 +68,9 @@ export const PLANS = {
 export type PlanKey = keyof typeof PLANS;
 
 export function isRouteAllowed(plan: PlanKey, route: string): boolean {
-  return PLANS[plan].allowedRoutes.includes(route);
+  return (PLANS[plan].allowedRoutes as readonly string[]).includes(route);
 }
 
-export function getNavItemsForPlan(plan: PlanKey) {
+export function getNavItemsForPlan(plan: PlanKey): readonly string[] {
   return PLANS[plan].allowedRoutes;
 }
