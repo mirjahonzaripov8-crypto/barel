@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { checkSubscription, getAdminCard, addPayment, type Payment } from '@/lib/store';
+import { checkSubscription, getAdminCard } from '@/lib/store';
 import { formatCurrency, PLANS } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { CreditCard, AlertTriangle, Upload, Clock } from 'lucide-react';
@@ -112,23 +112,29 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
     reader.readAsDataURL(file);
   };
 
-  const submitPayment = () => {
+  const planPrice = company?.plan && PLANS[company.plan as keyof typeof PLANS] ? PLANS[company.plan as keyof typeof PLANS].price : 0;
+
+  const submitPayment = async () => {
     if (!company || !receiptBase64) return;
     setUploading(true);
-    const planPrice = company.plan && PLANS[company.plan] ? PLANS[company.plan].price : 0;
-    const payment: Payment = {
-      id: `pay_${Date.now()}`,
-      companyKey: company.key,
-      amount: planPrice,
-      payment_date: new Date().toISOString(),
-      status: 'pending',
-      receipt_base64: receiptBase64,
-    };
-    addPayment(payment);
-    toast.success("Chek yuborildi! Admin tez orada tasdiqlaydi.");
-    setReceiptBase64(null);
-    setUploading(false);
-    setReminderOpen(false);
+    try {
+      const { error } = await supabase.from('payments').insert({
+        company_key: company.key,
+        company_name: company.name,
+        amount: planPrice,
+        status: 'pending',
+        receipt_base64: receiptBase64,
+      });
+      if (error) throw error;
+      toast.success("Chek yuborildi! Admin tez orada tasdiqlaydi.");
+      setReceiptBase64(null);
+      setReminderOpen(false);
+    } catch (e) {
+      console.error(e);
+      toast.error("Xatolik yuz berdi. Qayta urinib ko'ring.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   // HARD LOCK - 2+ days past expiry
@@ -139,11 +145,16 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
           <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
             <AlertTriangle className="h-8 w-8 text-destructive" />
           </div>
-          <div>
+           <div>
             <h1 className="text-2xl font-bold text-foreground mb-2">Obuna muddati tugagan!</h1>
             <p className="text-muted-foreground text-sm">
               Tizimdan foydalanish uchun obuna to'lovini amalga oshiring.
             </p>
+            {planPrice > 0 && (
+              <p className="text-lg font-bold text-primary mt-2">
+                To'lov summasi: {formatCurrency(planPrice)}
+              </p>
+            )}
           </div>
 
           <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5">
@@ -193,6 +204,9 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
             </DialogTitle>
             <DialogDescription>
               Obuna muddatingiz tugagan. 2 kun ichida to'lovni amalga oshirmasangiz, tizim to'liq bloklanadi.
+              {planPrice > 0 && (
+                <span className="block mt-1 font-semibold text-primary">To'lov summasi: {formatCurrency(planPrice)}</span>
+              )}
             </DialogDescription>
           </DialogHeader>
 

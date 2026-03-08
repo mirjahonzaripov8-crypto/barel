@@ -50,6 +50,45 @@ export type Database = {
         }
         Relationships: []
       }
+      payments: {
+        Row: {
+          amount: number
+          approved_until: string | null
+          company_key: string
+          company_name: string | null
+          created_at: string | null
+          id: string
+          payment_date: string
+          receipt_base64: string | null
+          status: string
+          updated_at: string | null
+        }
+        Insert: {
+          amount?: number
+          approved_until?: string | null
+          company_key: string
+          company_name?: string | null
+          created_at?: string | null
+          id?: string
+          payment_date?: string
+          receipt_base64?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Update: {
+          amount?: number
+          approved_until?: string | null
+          company_key?: string
+          company_name?: string | null
+          created_at?: string | null
+          id?: string
+          payment_date?: string
+          receipt_base64?: string | null
+          status?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       telegram_sessions: {
         Row: {
           chat_id: string

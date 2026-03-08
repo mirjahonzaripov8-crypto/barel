@@ -1,7 +1,8 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCompanies, saveCompanies, getPayments, savePayments, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, type Company, type Payment, type FeatureRequest } from '@/lib/store';
+import { getCompanies, saveCompanies, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, type Company, type FeatureRequest } from '@/lib/store';
+import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatDate, formatNumber, PLANS, type PlanKey } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -75,17 +76,22 @@ export default function SuperAdminPage() {
   const [cardHolder, setCardHolder] = useState(() => getAdminCard().cardHolder);
 
   const companies = getCompanies();
-  const payments = getPayments();
+  const [payments, setPayments] = useState<any[]>([]);
   const featureRequests = getFeatureRequests();
-  const pendingPayments = payments.filter(p => p.status === 'pending');
+  const pendingPayments = payments.filter((p: any) => p.status === 'pending');
   const pendingFeatures = featureRequests.filter(f => f.status === 'pending' || f.status === 'paid');
   const activeCount = companies.filter(c => c.subscription.status === 'active' || c.subscription.status === 'trial').length;
 
   const forceRefresh = () => setRefresh(r => r + 1);
 
-  // Auto-refresh every 5 seconds to pick up new payments/requests
+  // Load payments from DB
   useEffect(() => {
-    const interval = setInterval(() => setRefresh(r => r + 1), 5000);
+    const loadPayments = async () => {
+      const { data } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
+      if (data) setPayments(data);
+    };
+    loadPayments();
+    const interval = setInterval(loadPayments, 5000);
     return () => clearInterval(interval);
   }, []);
 
@@ -150,12 +156,7 @@ export default function SuperAdminPage() {
     const pid = pendingPaymentId;
     setDurationOpen(false);
 
-    requireSecurity(() => {
-      const ps = getPayments();
-      const idx = ps.findIndex(p => p.id === pid);
-      if (idx < 0) return;
-      ps[idx].status = 'approved';
-
+    requireSecurity(async () => {
       let until: Date;
       if (useCustomDate && customDate) {
         until = new Date(customDate);
@@ -163,21 +164,28 @@ export default function SuperAdminPage() {
         until = new Date();
         until.setMonth(until.getMonth() + durationMonths);
       }
-      ps[idx].approved_until = until.toISOString();
-      savePayments(ps);
 
-      const cs = getCompanies();
-      const ci = cs.findIndex(c => c.key === ps[idx].companyKey);
-      if (ci >= 0) {
-        cs[ci].subscription = { ...cs[ci].subscription, status: 'active', active_until: until.toISOString() };
-        saveCompanies(cs);
+      await supabase.from('payments').update({ status: 'approved', approved_until: until.toISOString() }).eq('id', pid);
+
+      // Also update local company subscription
+      const payment = payments.find((p: any) => p.id === pid);
+      if (payment) {
+        const cs = getCompanies();
+        const ci = cs.findIndex(c => c.key === payment.company_key);
+        if (ci >= 0) {
+          cs[ci].subscription = { ...cs[ci].subscription, status: 'active', active_until: until.toISOString() };
+          saveCompanies(cs);
+        }
       }
       toast.success("To'lov tasdiqlandi!");
       forceRefresh();
+      // Reload payments
+      const { data } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
+      if (data) setPayments(data);
     });
   };
 
-  const viewReceipt = (payment: Payment) => {
+  const viewReceipt = (payment: any) => {
     if (payment.receipt_base64) {
       setReceiptData(payment.receipt_base64);
       setReceiptInfo(`Holati: ${payment.status} · Sana: ${formatDate(payment.payment_date)} · Summa: ${formatCurrency(payment.amount)}`);
@@ -472,13 +480,13 @@ export default function SuperAdminPage() {
                   <tbody>
                     {payments.length === 0 ? (
                       <tr><td colSpan={6} className="py-12 text-center text-muted-foreground">To'lovlar yo'q</td></tr>
-                    ) : [...payments].reverse().map(p => {
-                      const comp = companies.find(c => c.key === p.companyKey);
+                    ) : payments.map((p: any) => {
+                      const comp = companies.find(c => c.key === p.company_key);
                       return (
                         <tr key={p.id} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
-                          <td className="py-3 px-4 font-medium">{comp?.name || p.companyKey}</td>
+                          <td className="py-3 px-4 font-medium">{p.company_name || comp?.name || p.company_key}</td>
                           <td className="py-3 px-4 font-semibold">{formatCurrency(p.amount)}</td>
-                          <td className="py-3 px-4 text-muted-foreground text-xs">{formatDate(p.payment_date)}</td>
+                          <td className="py-3 px-4 text-muted-foreground text-xs">{formatDate(p.payment_date || p.created_at)}</td>
                           <td className="py-3 px-4">
                             <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${
                               p.status === 'approved' ? 'bg-success/10 text-success' :
