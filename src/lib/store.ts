@@ -187,6 +187,7 @@ export function registerCompany(data: {
   login: string;
   password: string;
   promocode?: string;
+  securityPassword: string;
 }): { success: boolean; error?: string } {
   const companies = getCompanies();
   
