@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateCompany, addLog } from '@/lib/store';
+import { updateCompany, addLog, getCompanyByKey } from '@/lib/store';
+import { syncCompanyUsersToDb } from '@/lib/syncUsers';
 import { formatDateTime, getMonthAgoStr, getTodayStr, isInRange } from '@/lib/helpers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -33,6 +34,9 @@ export default function WorkersPage() {
     }));
     addLog(company.key, user?.login || '', 'Ishchi', `${name} (${login}) qo'shildi`);
     refreshCompany();
+    // Sync to DB for telegram bot
+    const updated = getCompanyByKey(company.key);
+    if (updated) syncCompanyUsersToDb(updated);
     setLogin(''); setPassword(''); setName('');
     toast.success("Ishchi qo'shildi!");
   };
@@ -45,6 +49,8 @@ export default function WorkersPage() {
     }));
     addLog(company.key, user?.login || '', 'Ishchi', `${workerLogin} o'chirildi`);
     refreshCompany();
+    const updated = getCompanyByKey(company.key);
+    if (updated) syncCompanyUsersToDb(updated);
     toast.success("Ishchi o'chirildi!");
   };
 

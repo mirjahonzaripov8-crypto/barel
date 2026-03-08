@@ -4,6 +4,7 @@ import {
   authenticate, getCompanyByKey, setCurrentCompanyKey,
   getCurrentCompanyKey, seedDemoData, type Company, type CompanyUser
 } from '@/lib/store';
+import { syncCompanyUsersToDb } from '@/lib/syncUsers';
 
 interface AuthState {
   isLoggedIn: boolean;
@@ -52,6 +53,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setCurrentUser(userData);
       setCurrentCompanyKey(result.companyKey);
       const company = getCompanyByKey(result.companyKey);
+      if (company) syncCompanyUsersToDb(company);
       setState({ isLoggedIn: true, isSuperAdmin: false, user: userData, company: company || null });
       return { success: true };
     }
