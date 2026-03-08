@@ -19,11 +19,79 @@ Deno.serve(async (req) => {
       });
     }
 
+    const url = new URL(req.url);
+    
+    // Telegram webhook handler (POST from Telegram servers)
+    if (url.pathname.endsWith('/webhook')) {
+      const update = await req.json();
+      console.log('Telegram update received:', JSON.stringify(update));
+      
+      if (update.message) {
+        const chatId = update.message.chat.id;
+        const text = update.message.text || '';
+        const firstName = update.message.from?.first_name || 'Foydalanuvchi';
+        
+        if (text === '/start') {
+          const responseText = `👋 Salom, ${firstName}!\n\n` +
+            `🤖 BAREL.uz Telegram botiga xush kelibsiz!\n\n` +
+            `📋 Sizning Chat ID: <code>${chatId}</code>\n\n` +
+            `👆 Ushbu raqamni nusxalab, BAREL.uz dashboardidagi Telegram sozlamalariga kiriting.\n\n` +
+            `✅ Shundan so'ng siz kunlik hisobotlar va bildirishnomalarni olishingiz mumkin bo'ladi.`;
+          
+          await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: responseText,
+              parse_mode: 'HTML',
+            }),
+          });
+        } else if (text === '/help') {
+          const helpText = `📖 <b>BAREL.uz Bot Yordam</b>\n\n` +
+            `/start - Chat ID ni olish\n` +
+            `/help - Yordam\n\n` +
+            `🔗 Batafsil: barel.uz`;
+          
+          await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: helpText,
+              parse_mode: 'HTML',
+            }),
+          });
+        }
+      }
+      
+      return new Response(JSON.stringify({ ok: true }), {
+        headers: { 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Set webhook endpoint
+    if (url.pathname.endsWith('/set-webhook')) {
+      const supabaseUrl = Deno.env.get('SUPABASE_URL');
+      const webhookUrl = `${supabaseUrl}/functions/v1/telegram-bot/webhook`;
+      
+      const res = await fetch(`${TELEGRAM_API}${botToken}/setWebhook`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: webhookUrl }),
+      });
+      const data = await res.json();
+      
+      return new Response(JSON.stringify(data), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // API calls from frontend
     const body = await req.json();
     const { action, chat_id, message, parse_mode } = body;
 
     if (action === 'verify') {
-      // Verify chat_id by sending a test message
       const res = await fetch(`${TELEGRAM_API}${botToken}/sendMessage`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -48,7 +116,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'send') {
-      // Send a custom message
       if (!chat_id || !message) {
         return new Response(JSON.stringify({ error: 'chat_id and message required' }), {
           status: 400,
@@ -80,7 +147,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'daily_report') {
-      // Send daily report
       const { company_name, report_date, fuels, total_sales, total_expenses, net_profit } = body;
 
       let text = `📊 <b>${company_name}</b>\n`;
@@ -120,6 +186,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (err) {
+    console.error('Error:', err);
     return new Response(JSON.stringify({ error: err.message }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
