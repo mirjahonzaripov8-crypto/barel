@@ -17,7 +17,7 @@ import {
 import { toast } from 'sonner';
 import {
   isWebAuthnSupported, registerBiometric, verifyBiometric,
-  hasBiometricRegistered
+  hasBiometricRegistered, isInIframe
 } from '@/lib/biometric';
 
 type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card' | 'faceid';
