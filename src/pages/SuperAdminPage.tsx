@@ -77,7 +77,7 @@ export default function SuperAdminPage() {
   }, []);
 
   const confirmSecurity = () => {
-    if (securityPw === 'admin2024') {
+    if (securityPw === '201116ZM') {
       setSecurityOpen(false);
       pendingAction?.();
       setPendingAction(null);
