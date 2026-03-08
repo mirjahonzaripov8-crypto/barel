@@ -49,7 +49,7 @@ export default function LoginPage() {
 
     // Check if this is a special login requiring biometric
     const loginKey = getLoginKeyForCredentials(login.trim());
-    if (loginKey && isWebAuthnSupported()) {
+    if (loginKey && isWebAuthnSupported() && !isInIframe()) {
       setPendingResult(result);
       if (hasBiometricRegistered(loginKey)) {
         setBiometricStep('verify');
