@@ -8,7 +8,7 @@ import { Shield, Lock, Unlock, Trash2, KeyRound } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function SecurityPage() {
-  const { company, refreshCompany } = useAuth();
+  const { company, refreshCompany, isLooker } = useAuth();
   const [op1, setOp1] = useState(company?.ops.op1 || '');
   const [op2, setOp2] = useState(company?.ops.op2 || '');
   const [authenticated, setAuthenticated] = useState(false);
@@ -26,7 +26,7 @@ export default function SecurityPage() {
     }
   };
 
-  if (!authenticated) {
+  if (!authenticated && !isLooker) {
     return (
       <div>
         <h1 className="text-2xl font-bold text-foreground mb-6">XAVFSIZLIK</h1>
