@@ -41,9 +41,8 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 
 function PublicRoute({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn, isSuperAdmin, isLooker, company } = useAuth();
+  const { isLoggedIn, isSuperAdmin } = useAuth();
   if (isLoggedIn && isSuperAdmin) return <Navigate to="/admin" replace />;
-  if (isLoggedIn && isLooker && !company) return <Navigate to="/looker" replace />;
   if (isLoggedIn) return <Navigate to="/dashboard" replace />;
   return <>{children}</>;
 }
