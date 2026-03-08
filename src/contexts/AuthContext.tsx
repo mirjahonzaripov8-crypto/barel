@@ -4,6 +4,7 @@ import {
   authenticate, getCompanyByKey, setCurrentCompanyKey,
   getCurrentCompanyKey, seedDemoData, type Company, type CompanyUser
 } from '@/lib/store';
+import { syncCompanyUsersToDb } from '@/lib/syncUsers';
 
 interface AuthState {
   isLoggedIn: boolean;
