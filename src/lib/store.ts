@@ -48,6 +48,7 @@ export interface Company {
   };
   ops: { op1: string; op2: string };
   plomba: PlombaRecord[];
+  securityPassword: string;
   created_at: string;
 }
 
