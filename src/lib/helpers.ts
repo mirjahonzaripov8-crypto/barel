@@ -81,7 +81,7 @@ export const PLANS = {
       'Telegram bot (kunlik hisobot)',
       'Parol + Harakatlar tarixi'
     ],
-    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/security', '/dashboard/telegram'],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/security', '/dashboard/telegram', '/dashboard/ai'],
     canExportPdf: true,
     canExportExcel: false,
     hasCharts: true,
@@ -138,7 +138,7 @@ export function calculatePlanPrice(plan: PlanKey, stationCount: number, hasValid
   }
 
   const stationDiscount = originalTotal - total;
-  const promoDiscount = hasValidPromo ? Math.round(total * 0.05) : 0;
+  const promoDiscount = hasValidPromo ? Math.round(total * 0.10) : 0;
   const finalTotal = total - promoDiscount;
 
   return { total, originalTotal, discount: stationDiscount, promoDiscount, finalTotal };

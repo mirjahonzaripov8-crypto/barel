@@ -1,8 +1,14 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles } from 'lucide-react';
+import { Bot, Send, Sparkles, PlusCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/lib/helpers';
+import { addFeatureRequest, getFeatureRequests, updateFeatureRequest, type FeatureRequest } from '@/lib/store';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
+} from '@/components/ui/dialog';
+import { toast } from 'sonner';
 
 interface Message {
   role: 'user' | 'ai';
@@ -16,14 +22,12 @@ function getCompanyAnalysis(company: any) {
   const last7 = data.slice(-7);
   const last30 = data.slice(-30);
 
-  // Revenue
   const totalRevenue = last30.reduce((s: number, d: any) => s + d.fuels.reduce((a: number, f: any) => a + f.sold * f.price, 0), 0);
   const totalExpenses = last30.reduce((s: number, d: any) => s + d.expenses.reduce((a: number, e: any) => a + e.amount, 0), 0);
   const totalTerminal = last30.reduce((s: number, d: any) => s + (d.terminal || 0), 0);
   const totalCost = last30.reduce((s: number, d: any) => s + d.fuels.reduce((a: number, f: any) => a + (f.prixod || 0) * (f.tannarx || 0), 0), 0);
   const netProfit = totalRevenue - totalExpenses - totalCost;
 
-  // Per fuel stats
   const fuelStats: Record<string, { sold: number; revenue: number; cost: number }> = {};
   last30.forEach((d: any) => {
     d.fuels.forEach((f: any) => {
@@ -34,12 +38,10 @@ function getCompanyAnalysis(company: any) {
     });
   });
 
-  // Last day
   const lastDay = data[data.length - 1];
   const lastDayRevenue = lastDay ? lastDay.fuels.reduce((a: number, f: any) => a + f.sold * f.price, 0) : 0;
   const lastDayExpenses = lastDay ? lastDay.expenses.reduce((a: number, e: any) => a + e.amount, 0) : 0;
 
-  // Top expense reasons
   const expReasons: Record<string, number> = {};
   last30.forEach((d: any) => {
     d.expenses.forEach((e: any) => {
@@ -48,7 +50,6 @@ function getCompanyAnalysis(company: any) {
   });
   const topExpenses = Object.entries(expReasons).sort((a, b) => b[1] - a[1]).slice(0, 5);
 
-  // Daily avg
   const avgDailyRevenue = last30.length > 0 ? totalRevenue / last30.length : 0;
 
   return {
@@ -68,12 +69,10 @@ function generateAnswer(question: string, company: any): string {
   if (!analysis) return "Korxona ma'lumotlari topilmadi. Iltimos, tizimga qaytadan kiring.";
   if (analysis.daysCount === 0) return "Hozircha hech qanday sotuv ma'lumoti kiritilmagan. Hisoblagich sahifasidan kunlik ma'lumot kiritishni boshlang.";
 
-  // Greeting
   if (/salom|assalom|hey|privet|hi\b/.test(q)) {
     return `Assalomu alaykum! Men BAREL.uz AI yordamchisiman. Korxonangiz haqida savollar bering — sotuv, xarajat, foyda, maslahat va boshqalar. Qanday yordam bera olaman?`;
   }
 
-  // Revenue / sotuv
   if (/tushum|sotuv|daromad|revenue|savdo/.test(q)) {
     let resp = `📊 Oxirgi ${analysis.daysCount} kunda:\n\n`;
     resp += `💰 Jami tushum: ${formatCurrency(analysis.totalRevenue)}\n`;
@@ -88,7 +87,6 @@ function generateAnswer(question: string, company: any): string {
     return resp;
   }
 
-  // Expenses / xarajat
   if (/xarajat|harajat|chiqim|expense|sarf/.test(q)) {
     let resp = `📉 Oxirgi ${analysis.daysCount} kunda jami xarajat: ${formatCurrency(analysis.totalExpenses)}\n\n`;
     if (analysis.topExpenses.length > 0) {
@@ -103,7 +101,6 @@ function generateAnswer(question: string, company: any): string {
     return resp;
   }
 
-  // Profit / foyda
   if (/foyda|profit|daromad|sof|net|natija/.test(q)) {
     let resp = `💵 Oxirgi ${analysis.daysCount} kun moliyaviy natijasi:\n\n`;
     resp += `Tushum: ${formatCurrency(analysis.totalRevenue)}\n`;
@@ -123,13 +120,11 @@ function generateAnswer(question: string, company: any): string {
     return resp;
   }
 
-  // Terminal
   if (/terminal/.test(q)) {
     const termPercent = analysis.totalRevenue > 0 ? Math.round(analysis.totalTerminal / analysis.totalRevenue * 100) : 0;
     return `💳 Oxirgi ${analysis.daysCount} kunda terminal orqali: ${formatCurrency(analysis.totalTerminal)} (umumiy tushumning ${termPercent}%)\n\nNaqd pul: ${formatCurrency(analysis.totalRevenue - analysis.totalTerminal - analysis.totalExpenses)}`;
   }
 
-  // Fuel / mahsulot
   if (/mahsulot|yoqilgi|benzin|propan|dizel|metan|ai-9|fuel/.test(q)) {
     let resp = `⛽ Mahsulotlar tahlili (oxirgi ${analysis.daysCount} kun):\n\n`;
     Object.entries(analysis.fuelStats).forEach(([name, s]: [string, any]) => {
@@ -140,13 +135,11 @@ function generateAnswer(question: string, company: any): string {
       resp += `  Tannarx: ${formatCurrency(s.cost)}\n`;
       resp += `  Foyda: ${formatCurrency(profit)}\n\n`;
     });
-    // Best seller
     const best = Object.entries(analysis.fuelStats).sort((a: any, b: any) => b[1].revenue - a[1].revenue)[0];
     if (best) resp += `🏆 Eng ko'p sotuv: ${best[0]}`;
     return resp;
   }
 
-  // Maslahat / advice
   if (/maslahat|tavsiya|advice|nima qilish|yaxshilash|taklif/.test(q)) {
     let resp = `💡 Korxonangiz uchun maslahatlar:\n\n`;
     const margin = analysis.totalRevenue > 0 ? analysis.netProfit / analysis.totalRevenue : 0;
@@ -163,34 +156,30 @@ function generateAnswer(question: string, company: any): string {
     const termPercent = analysis.totalRevenue > 0 ? analysis.totalTerminal / analysis.totalRevenue : 0;
     resp += `3. 💳 Terminal ulushi: ${Math.round(termPercent*100)}%. ${termPercent > 0.5 ? 'Terminal to\'lovlar ko\'p — naqd pul oqimiga e\'tibor bering.' : 'Naqd pul oqimi yaxshi.'}\n\n`;
 
-    // Best/worst fuel
     const fuels = Object.entries(analysis.fuelStats).map(([n, s]: [string, any]) => ({ name: n, profit: s.revenue - s.cost, sold: s.sold }));
     const best = fuels.sort((a, b) => b.profit - a.profit)[0];
     const worst = fuels.sort((a, b) => a.profit - b.profit)[0];
     if (best) resp += `4. 🏆 Eng foydali mahsulot: ${best.name} (${formatCurrency(best.profit)} foyda)\n`;
     if (worst && fuels.length > 1) resp += `5. 📊 Eng kam foydali: ${worst.name} — narxni oshirish yoki tannarxni kamaytirish maslahat.\n`;
 
+
     return resp;
   }
 
-  // Korxona info
   if (/korxona|kompaniya|info|ma'lumot|haqida/.test(q)) {
     return `🏢 Korxona: ${company.name}\n📋 Tarif: ${company.plan}\n⛽ Zapravkalar: ${analysis.stationsCount} ta\n🔧 Mahsulot turlari: ${analysis.fuelTypesCount} ta\n👥 Ishchilar: ${analysis.workersCount} ta\n📅 Ma'lumot: ${analysis.daysCount} kunlik`;
   }
 
-  // Help
   if (/yordam|help|nima|qanday|bilasanmi|nimalar/.test(q)) {
     return `Men quyidagi savollarga javob bera olaman:\n\n• 💰 Sotuv va tushum haqida\n• 📉 Xarajatlar tahlili\n• 💵 Foyda va zarar\n• 💳 Terminal ma'lumotlari\n• ⛽ Mahsulotlar tahlili\n• 💡 Maslahat va tavsiyalar\n• 🏢 Korxona ma'lumotlari\n\nMasalan: "Foydamni ko'rsat", "Maslahat ber", "Qaysi mahsulot eng foydali?"`;
   }
 
-  // Default — reject non-app questions
   const appKeywords = /sotuv|sotil|tushum|xarajat|harajat|foyda|zarar|terminal|mahsulot|yoqilgi|benzin|propan|dizel|metan|narx|pul|summa|kassa|litr|korxona|zapravka|ishchi|operator|plomba|hisoblagich|moliya|arxiv|referal|tarif|obuna|maslahat|tavsiya|tahlil|statistika|grafik|pdf|parol|lock|blok/;
 
   if (!appKeywords.test(q)) {
     return `❌ Kechirasiz, men faqat korxona va ilova bilan bog'liq savollarga javob beraman.\n\nMen yordam bera oladigan mavzular:\n• 💰 Sotuv va tushum\n• 📉 Xarajatlar\n• 💵 Foyda va zarar\n• ⛽ Mahsulotlar tahlili\n• 💡 Maslahat va tavsiyalar\n\nMasalan: "Foydamni ko'rsat", "Maslahat ber", "Xarajatlarim qancha?"`;
   }
 
-  // Fallback for app-related but unmatched
   let resp = `📊 Korxonangiz haqida qisqacha:\n\n`;
   resp += `💰 Oxirgi ${analysis.daysCount} kun tushumi: ${formatCurrency(analysis.totalRevenue)}\n`;
   resp += `💵 Sof foyda: ${formatCurrency(analysis.netProfit)}\n`;
@@ -204,10 +193,28 @@ export default function AIAssistantPage() {
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
   const chatRef = useRef<HTMLDivElement>(null);
+  const [featureOpen, setFeatureOpen] = useState(false);
+  const [featureDesc, setFeatureDesc] = useState('');
+  const [myRequests, setMyRequests] = useState<FeatureRequest[]>([]);
+  const [, setRefresh] = useState(0);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
   }, [messages]);
+
+  useEffect(() => {
+    if (company) {
+      const all = getFeatureRequests().filter(r => r.companyKey === company.key);
+      setMyRequests(all);
+    }
+  }, [company]);
+
+  const refreshRequests = () => {
+    if (company) {
+      setMyRequests(getFeatureRequests().filter(r => r.companyKey === company.key));
+      setRefresh(r => r + 1);
+    }
+  };
 
   const send = () => {
     if (!input.trim()) return;
@@ -221,11 +228,44 @@ export default function AIAssistantPage() {
     setInput('');
   };
 
+  const submitFeatureRequest = () => {
+    if (!featureDesc.trim() || !company) return;
+    const req: FeatureRequest = {
+      id: `fr_${Date.now()}`,
+      companyKey: company.key,
+      companyName: company.name,
+      description: featureDesc.trim(),
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    addFeatureRequest(req);
+    toast.success("So'rov yuborildi! Admin tez orada javob beradi.");
+    setFeatureDesc('');
+    setFeatureOpen(false);
+    refreshRequests();
+  };
+
+  const getStatusBadge = (status: FeatureRequest['status']) => {
+    switch (status) {
+      case 'pending': return <span className="text-xs px-2 py-0.5 rounded-md bg-warning/10 text-warning font-medium">Kutilmoqda</span>;
+      case 'priced': return <span className="text-xs px-2 py-0.5 rounded-md bg-primary/10 text-primary font-medium">Narx belgilandi</span>;
+      case 'paid': return <span className="text-xs px-2 py-0.5 rounded-md bg-accent/50 text-accent-foreground font-medium">To'langan</span>;
+      case 'done': return <span className="text-xs px-2 py-0.5 rounded-md bg-success/10 text-success font-medium">Bajarildi ✅</span>;
+      case 'rejected': return <span className="text-xs px-2 py-0.5 rounded-md bg-destructive/10 text-destructive font-medium">Rad etildi</span>;
+    }
+  };
+
   return (
     <div>
-      <div className="flex items-center gap-3 mb-6">
-        <h1 className="text-2xl font-bold text-foreground">AI yordamchi</h1>
-        <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-1"><Sparkles className="h-3 w-3" /> Premium</span>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <h1 className="text-2xl font-bold text-foreground">AI yordamchi</h1>
+          <span className="bg-primary/10 text-primary text-xs font-bold px-2 py-0.5 rounded-md flex items-center gap-1"><Sparkles className="h-3 w-3" /> AI</span>
+        </div>
+        <Button onClick={() => setFeatureOpen(true)} variant="outline" className="gap-2">
+          <PlusCircle className="h-4 w-4" /> Funksiya qo'shish
+        </Button>
       </div>
 
       <div className="bg-card border border-border rounded-lg flex flex-col h-[500px]">
@@ -264,6 +304,74 @@ export default function AIAssistantPage() {
           <Button onClick={send} size="icon" className="self-end h-10 w-10"><Send className="h-4 w-4" /></Button>
         </div>
       </div>
+
+      {/* My feature requests */}
+      {myRequests.length > 0 && (
+        <div className="mt-6">
+          <h2 className="text-lg font-semibold text-foreground mb-3">Mening so'rovlarim</h2>
+          <div className="space-y-3">
+            {[...myRequests].reverse().map(r => (
+              <div key={r.id} className="bg-card border border-border rounded-lg p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <p className="text-sm font-medium text-foreground">{r.description}</p>
+                  {getStatusBadge(r.status)}
+                </div>
+                {r.adminResponse && (
+                  <div className="mt-2 bg-secondary/50 rounded-md p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Admin javobi:</p>
+                    <p className="text-sm text-foreground">{r.adminResponse}</p>
+                    {r.price && <p className="text-sm font-bold text-primary mt-1">Narxi: {formatCurrency(r.price)}</p>}
+                  </div>
+                )}
+                {r.status === 'priced' && (
+                  <Button size="sm" className="mt-2" onClick={() => {
+                    updateFeatureRequest(r.id, (req: FeatureRequest) => ({ ...req, status: 'paid' as const, updated_at: new Date().toISOString() }));
+                    toast.success("To'lov tasdiqlandi! Admin tez orada funksiyani qo'shadi.");
+                    refreshRequests();
+                  }}>
+                    To'lovni tasdiqlash
+                  </Button>
+                )}
+                {r.status === 'done' && r.adminPrompt && (
+                  <div className="mt-2 bg-success/5 border border-success/20 rounded-md p-3">
+                    <p className="text-xs text-success font-medium">✅ Funksiya qo'shildi!</p>
+                  </div>
+                )}
+                <p className="text-xs text-muted-foreground mt-2">{new Date(r.created_at).toLocaleDateString('uz-UZ')}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Feature Request Dialog */}
+      <Dialog open={featureOpen} onOpenChange={setFeatureOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PlusCircle className="h-5 w-5 text-primary" /> Yangi funksiya so'rash
+            </DialogTitle>
+            <DialogDescription>
+              Qanday funksiya qo'shmoqchisiz? Batafsil tavsiflab bering va admin javob beradi.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Textarea
+              value={featureDesc}
+              onChange={e => setFeatureDesc(e.target.value)}
+              placeholder="Masalan: Har oylik moliyaviy hisobotni PDF formatda avtomatik yaratish funksiyasi kerak..."
+              rows={5}
+              className="resize-none"
+            />
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setFeatureOpen(false)}>Bekor</Button>
+            <Button onClick={submitFeatureRequest} disabled={!featureDesc.trim()}>
+              <Send className="h-4 w-4 mr-2" /> Yuborish
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
