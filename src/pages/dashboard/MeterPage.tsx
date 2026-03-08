@@ -12,18 +12,38 @@ export default function MeterPage() {
   const { company, user, refreshCompany } = useAuth();
   const [date, setDate] = useState(getTodayStr());
   const [operator, setOperator] = useState(company?.ops.op1 || '');
+  
+  // Get previous day's end values as today's start
+  const getPreviousEnd = (fuelType: string): number => {
+    if (!company?.data.length) return 0;
+    const sortedData = [...company.data].sort((a, b) => b.date.localeCompare(a.date));
+    for (const day of sortedData) {
+      const fuel = day.fuels.find(f => f.type === fuelType);
+      if (fuel && fuel.end > 0) return fuel.end;
+    }
+    return 0;
+  };
+
   const [fuels, setFuels] = useState(
-    company?.fuelTypes.map(ft => ({ type: ft.name, start: 0, sold: 0, end: 0, price: 0, prixod: 0, tannarx: 0 })) || []
+    company?.fuelTypes.map(ft => {
+      const prevEnd = getPreviousEnd(ft.name);
+      return { type: ft.name, start: prevEnd, sold: 0, end: prevEnd, price: company?.conf.prices[ft.name] || 0, prixod: 0, tannarx: 0 };
+    }) || []
   );
   const [expenses, setExpenses] = useState<{ reason: string; amount: number }[]>([]);
   const [terminal, setTerminal] = useState(0);
 
   if (!company) return null;
 
+  // Update fuel: end is entered, sold is calculated as (end - start + prixod)
   const updateFuel = (i: number, key: string, val: number) => {
     const f = [...fuels];
     (f[i] as any)[key] = val;
-    if (key === 'start' || key === 'sold') f[i].end = f[i].start + f[i].sold;
+    
+    // Sotilgan = Oxirgi - Boshlang'ich + Prixod
+    if (key === 'end' || key === 'start' || key === 'prixod') {
+      f[i].sold = Math.max(0, f[i].start - f[i].end + f[i].prixod);
+    }
     setFuels(f);
   };
 
