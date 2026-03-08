@@ -120,6 +120,19 @@ export const PLANS = {
 
 export type PlanKey = keyof typeof PLANS;
 
+// Multi-station pricing: 1 station = base, 2-5 stations = 20% off, 6+ = no discount on extras
+export function calculatePlanPrice(plan: PlanKey, stationCount: number): { total: number; originalTotal: number; discount: number } {
+  const base = PLANS[plan].price;
+  if (stationCount <= 1) {
+    return { total: base, originalTotal: base, discount: 0 };
+  }
+  const discounted = Math.min(stationCount, 5);
+  const full = Math.max(0, stationCount - 5);
+  const originalTotal = base * stationCount;
+  const total = Math.round(base * discounted * 0.8 + base * full);
+  return { total, originalTotal, discount: originalTotal - total };
+}
+
 export function canExportPdf(plan: PlanKey): boolean {
   return PLANS[plan].canExportPdf;
 }

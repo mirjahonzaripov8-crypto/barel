@@ -28,6 +28,7 @@ export interface Company {
   phone: string;
   stations: string[];
   fuelTypes: FuelType[];
+  stationConfigs?: { fuelTypes: FuelType[] }[]; // per-station fuel configs
   plan: 'START' | 'STANDART' | 'PREMIUM';
   subscription: {
     status: 'trial' | 'active' | 'expired' | 'suspended';
@@ -185,7 +186,7 @@ export function registerCompany(data: {
   companyName: string;
   phone: string;
   stations: string[];
-  fuelTypes: FuelType[];
+  stationConfigs: { fuelTypes: FuelType[] }[];
   plan: 'START' | 'STANDART' | 'PREMIUM';
   login: string;
   password: string;
@@ -204,13 +205,26 @@ export function registerCompany(data: {
   const trialEnd = new Date();
   trialEnd.setDate(trialEnd.getDate() + 7);
 
+  // Aggregate all unique fuel types across stations
+  const allFuelTypes: FuelType[] = [];
+  const seen = new Set<string>();
+  for (const sc of data.stationConfigs) {
+    for (const ft of sc.fuelTypes) {
+      if (!seen.has(ft.name)) {
+        seen.add(ft.name);
+        allFuelTypes.push(ft);
+      }
+    }
+  }
+
   const key = `company_${Date.now()}`;
   const newCompany: Company = {
     key,
     name: data.companyName,
     phone: data.phone,
     stations: data.stations,
-    fuelTypes: data.fuelTypes,
+    fuelTypes: allFuelTypes,
+    stationConfigs: data.stationConfigs,
     plan: data.plan,
     subscription: {
       status: 'trial',
@@ -237,6 +251,14 @@ export function registerCompany(data: {
   companies.push(newCompany);
   saveCompanies(companies);
   return { success: true };
+}
+
+// Helper to get fuel types for a specific station (falls back to company.fuelTypes)
+export function getStationFuelTypes(company: Company, stationIndex: number): FuelType[] {
+  if (company.stationConfigs && company.stationConfigs[stationIndex]) {
+    return company.stationConfigs[stationIndex].fuelTypes;
+  }
+  return company.fuelTypes;
 }
 
 // Subscription check

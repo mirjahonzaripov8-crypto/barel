@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTodayStr, formatCurrency, formatNumber } from '@/lib/helpers';
-import { updateCompany, addLog } from '@/lib/store';
+import { updateCompany, addLog, getStationFuelTypes, getCurrentStation } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -60,9 +60,11 @@ export default function MeterPage() {
     } else {
       setIsExistingRecord(false);
       setSavedAt(null);
-      // New day - expand fuels based on meterCount
+      // New day - expand fuels based on meterCount (per-station)
       const expandedFuels: typeof fuels = [];
-      company.fuelTypes.forEach(ft => {
+      const stationIdx = getCurrentStation();
+      const stationFuels = getStationFuelTypes(company, stationIdx);
+      stationFuels.forEach(ft => {
         const count = ft.meterCount || 1;
         for (let m = 0; m < count; m++) {
           const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;

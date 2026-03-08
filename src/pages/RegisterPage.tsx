@@ -3,12 +3,12 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, ArrowLeft, ArrowRight, Check, ShieldCheck } from 'lucide-react';
+import { Zap, ArrowLeft, ArrowRight, Check, ShieldCheck, Fuel, Percent } from 'lucide-react';
 import { toast } from 'sonner';
 import { registerCompany, type FuelType } from '@/lib/store';
-import { PLANS, type PlanKey } from '@/lib/helpers';
+import { PLANS, calculatePlanPrice, type PlanKey } from '@/lib/helpers';
 
-const defaultFuels: (FuelType & { selected?: boolean })[] = [
+const defaultFuelList: (FuelType & { selected?: boolean })[] = [
   { name: 'Propan', unit: 'L', meterCount: 1 },
   { name: 'AI-91', unit: 'L', meterCount: 1 },
   { name: 'AI-92', unit: 'L', meterCount: 1 },
@@ -17,6 +17,8 @@ const defaultFuels: (FuelType & { selected?: boolean })[] = [
   { name: 'Metan', unit: 'm³', meterCount: 1 },
 ];
 
+type StationFuelConfig = (FuelType & { selected: boolean })[];
+
 export default function RegisterPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -24,13 +26,26 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     firstName: '', lastName: '', companyName: '', phone: '',
     stations: [''],
-    fuelTypes: defaultFuels.map(f => ({ ...f, selected: true, meterCount: f.meterCount || 1 })),
+    // Per-station fuel configs - initialized with one station
+    stationFuels: [defaultFuelList.map(f => ({ ...f, selected: true, meterCount: 1 }))] as StationFuelConfig[],
     plan: (searchParams.get('plan') as PlanKey) || 'STANDART' as PlanKey,
     promocode: '', login: '', password: '',
     securityPassword: '',
+    activeStationTab: 0,
   });
 
   const update = (key: string, value: any) => setForm(prev => ({ ...prev, [key]: value }));
+
+  // Sync stationFuels array when stations change
+  const syncStationFuels = (stations: string[]) => {
+    const current = [...form.stationFuels];
+    while (current.length < stations.length) {
+      current.push(defaultFuelList.map(f => ({ ...f, selected: true, meterCount: 1 })));
+    }
+    // trim extras
+    const synced = current.slice(0, stations.length);
+    return synced;
+  };
 
   const next = () => {
     if (step === 1 && (!form.firstName.trim() || !form.lastName.trim())) {
@@ -42,8 +57,21 @@ export default function RegisterPage() {
     if (step === 3 && form.stations.filter(s => s.trim()).length === 0) {
       toast.error("Kamida bitta zapravka kiriting!"); return;
     }
-    if (step === 4 && form.fuelTypes.filter(f => f.selected).length === 0) {
-      toast.error("Kamida bitta yoqilg'i turini tanlang!"); return;
+    if (step === 3) {
+      // Sync station fuels when moving from step 3 to 4
+      const synced = syncStationFuels(form.stations.filter(s => s.trim()));
+      update('stationFuels', synced);
+      update('activeStationTab', 0);
+    }
+    if (step === 4) {
+      // Validate each station has at least one fuel selected
+      for (let i = 0; i < form.stationFuels.length; i++) {
+        if (form.stationFuels[i].filter(f => f.selected).length === 0) {
+          toast.error(`"${form.stations[i]}" uchun kamida bitta mahsulot tanlang!`);
+          update('activeStationTab', i);
+          return;
+        }
+      }
     }
     setStep(s => Math.min(s + 1, 7));
   };
@@ -60,11 +88,17 @@ export default function RegisterPage() {
     if (!form.securityPassword.trim() || form.securityPassword.length < 4) {
       toast.error("Xavfsizlik paroli kamida 4 ta belgidan iborat bo'lsin!"); return;
     }
+
+    const validStations = form.stations.filter(s => s.trim());
+    const stationConfigs = form.stationFuels.slice(0, validStations.length).map(sf => ({
+      fuelTypes: sf.filter(f => f.selected).map(({ name, unit, meterCount }) => ({ name, unit, meterCount: meterCount || 1 })),
+    }));
+
     const result = registerCompany({
       firstName: form.firstName, lastName: form.lastName,
       companyName: form.companyName, phone: form.phone,
-      stations: form.stations.filter(s => s.trim()),
-      fuelTypes: form.fuelTypes.filter(f => f.selected).map(({ name, unit, meterCount }) => ({ name, unit, meterCount: meterCount || 1 })),
+      stations: validStations,
+      stationConfigs,
       plan: form.plan, login: form.login, password: form.password,
       promocode: form.promocode || undefined,
       securityPassword: form.securityPassword,
@@ -77,20 +111,40 @@ export default function RegisterPage() {
     }
   };
 
-  const addStation = () => update('stations', [...form.stations, '']);
+  const addStation = () => {
+    const newStations = [...form.stations, ''];
+    update('stations', newStations);
+    const newFuels = [...form.stationFuels, defaultFuelList.map(f => ({ ...f, selected: true, meterCount: 1 }))];
+    update('stationFuels', newFuels);
+  };
   const updateStation = (i: number, v: string) => {
     const s = [...form.stations]; s[i] = v; update('stations', s);
   };
   const removeStation = (i: number) => {
     if (form.stations.length <= 1) return;
     update('stations', form.stations.filter((_, idx) => idx !== i));
+    update('stationFuels', form.stationFuels.filter((_, idx) => idx !== i));
+    if (form.activeStationTab >= form.stations.length - 1) {
+      update('activeStationTab', Math.max(0, form.stations.length - 2));
+    }
   };
-  const toggleFuel = (i: number) => {
-    const f = [...form.fuelTypes]; f[i] = { ...f[i], selected: !f[i].selected }; update('fuelTypes', f);
+
+  const toggleFuel = (stationIdx: number, fuelIdx: number) => {
+    const sf = [...form.stationFuels];
+    sf[stationIdx] = [...sf[stationIdx]];
+    sf[stationIdx][fuelIdx] = { ...sf[stationIdx][fuelIdx], selected: !sf[stationIdx][fuelIdx].selected };
+    update('stationFuels', sf);
   };
-  const updateMeterCount = (i: number, count: number) => {
-    const f = [...form.fuelTypes]; f[i] = { ...f[i], meterCount: Math.max(1, Math.min(20, count)) }; update('fuelTypes', f);
+
+  const updateMeterCount = (stationIdx: number, fuelIdx: number, count: number) => {
+    const sf = [...form.stationFuels];
+    sf[stationIdx] = [...sf[stationIdx]];
+    sf[stationIdx][fuelIdx] = { ...sf[stationIdx][fuelIdx], meterCount: Math.max(1, Math.min(20, count)) };
+    update('stationFuels', sf);
   };
+
+  const validStationCount = form.stations.filter(s => s.trim()).length;
+  const pricing = calculatePlanPrice(form.plan, validStationCount);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-secondary/60 to-background p-4">
@@ -133,48 +187,116 @@ export default function RegisterPage() {
               <Button variant="outline" size="sm" onClick={addStation}>+ Zapravka qo'shish</Button>
             </div>
           )}
+
+          {/* Step 4: Per-station fuel types + meter counts */}
           {step === 4 && (
             <div className="space-y-3 animate-fade-in">
-              <Label>Yoqilg'i turlari va hisoblagichlar soni</Label>
-              <p className="text-xs text-muted-foreground">Har bir mahsulot uchun nechta hisoblagich (kolon) borligini belgilang</p>
-              {form.fuelTypes.map((f, i) => (
-                <div key={f.name} className={`w-full rounded-lg border transition-colors ${f.selected ? 'border-primary bg-secondary' : 'border-border'}`}>
-                  <button onClick={() => toggleFuel(i)} className="w-full flex items-center gap-3 p-3">
-                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${f.selected ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
-                      {f.selected && <Check className="h-3 w-3 text-primary-foreground" />}
-                    </div>
-                    <span className="font-medium text-foreground">{f.name}</span>
-                    <span className="text-muted-foreground text-sm ml-auto">({f.unit})</span>
-                  </button>
-                  {f.selected && (
-                    <div className="px-3 pb-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
-                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Hisoblagichlar soni:</Label>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={20}
-                        value={f.meterCount || 1}
-                        onChange={e => updateMeterCount(i, Number(e.target.value))}
-                        className="w-20 h-8 text-sm"
-                      />
-                    </div>
-                  )}
+              <Label>Har bir zapravka uchun mahsulotlar va hisoblagichlar</Label>
+
+              {/* Station tabs */}
+              {form.stations.filter(s => s.trim()).length > 1 && (
+                <div className="flex gap-1 flex-wrap">
+                  {form.stations.filter(s => s.trim()).map((s, i) => (
+                    <button
+                      key={i}
+                      onClick={() => update('activeStationTab', i)}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                        form.activeStationTab === i
+                          ? 'bg-primary text-primary-foreground'
+                          : 'bg-secondary text-muted-foreground hover:text-foreground'
+                      }`}
+                    >
+                      <Fuel className="h-3 w-3 inline mr-1" />
+                      {s}
+                    </button>
+                  ))}
                 </div>
-              ))}
+              )}
+
+              {/* Current station config */}
+              {form.stationFuels[form.activeStationTab] && (
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">{form.stations.filter(s => s.trim())[form.activeStationTab]}</span> — mahsulotlarni tanlang va hisoblagichlar sonini belgilang
+                  </p>
+                  {form.stationFuels[form.activeStationTab].map((f, fi) => (
+                    <div key={f.name} className={`w-full rounded-lg border transition-colors ${f.selected ? 'border-primary bg-secondary' : 'border-border'}`}>
+                      <button onClick={() => toggleFuel(form.activeStationTab, fi)} className="w-full flex items-center gap-3 p-3">
+                        <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${f.selected ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                          {f.selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                        </div>
+                        <span className="font-medium text-foreground">{f.name}</span>
+                        <span className="text-muted-foreground text-sm ml-auto">({f.unit})</span>
+                      </button>
+                      {f.selected && (
+                        <div className="px-3 pb-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                          <Label className="text-xs text-muted-foreground whitespace-nowrap">Hisoblagichlar soni:</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={20}
+                            value={f.meterCount || 1}
+                            onChange={e => updateMeterCount(form.activeStationTab, fi, Number(e.target.value))}
+                            className="w-20 h-8 text-sm"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           )}
+
+          {/* Step 5: Plan selection with multi-station pricing */}
           {step === 5 && (
             <div className="space-y-3 animate-fade-in">
               <Label>Tarifni tanlang</Label>
-              {(Object.keys(PLANS) as PlanKey[]).map(key => (
-                <button key={key} onClick={() => update('plan', key)} className={`w-full text-left p-4 rounded-lg border transition-all ${form.plan === key ? 'border-primary bg-secondary ring-2 ring-primary/20' : 'border-border hover:border-primary/30'}`}>
-                  <div className="flex justify-between items-center">
-                    <span className="font-bold text-foreground">{PLANS[key].name}</span>
-                    <span className="font-bold text-primary">{PLANS[key].price.toLocaleString()} so'm/oy</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">{PLANS[key].features.join(' • ')}</p>
-                </button>
-              ))}
+
+              {/* Discount banner */}
+              {validStationCount >= 2 && validStationCount <= 5 && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-success/10 border border-success/30">
+                  <Percent className="h-4 w-4 text-success shrink-0" />
+                  <p className="text-xs text-success font-medium">
+                    {validStationCount} ta zapravka — <span className="font-bold">20% chegirma</span> qo'llanildi!
+                  </p>
+                </div>
+              )}
+              {validStationCount > 5 && (
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-warning/10 border border-warning/30">
+                  <Percent className="h-4 w-4 text-warning shrink-0" />
+                  <p className="text-xs text-warning font-medium">
+                    5 tagacha zapravkaga 20% chegirma, qolgan {validStationCount - 5} tasiga to'liq narx
+                  </p>
+                </div>
+              )}
+
+              {(Object.keys(PLANS) as PlanKey[]).map(key => {
+                const p = calculatePlanPrice(key, validStationCount);
+                const hasDiscount = p.discount > 0;
+                return (
+                  <button key={key} onClick={() => update('plan', key)} className={`w-full text-left p-4 rounded-lg border transition-all ${form.plan === key ? 'border-primary bg-secondary ring-2 ring-primary/20' : 'border-border hover:border-primary/30'}`}>
+                    <div className="flex justify-between items-center">
+                      <span className="font-bold text-foreground">{PLANS[key].name}</span>
+                      <div className="text-right">
+                        {hasDiscount && (
+                          <span className="text-xs text-muted-foreground line-through mr-2">
+                            {p.originalTotal.toLocaleString()} so'm
+                          </span>
+                        )}
+                        <span className="font-bold text-primary">{p.total.toLocaleString()} so'm/oy</span>
+                      </div>
+                    </div>
+                    {validStationCount > 1 && (
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {validStationCount} ta zapravka × {PLANS[key].price.toLocaleString()} so'm
+                        {hasDiscount && <span className="text-success font-semibold"> − {p.discount.toLocaleString()} so'm chegirma</span>}
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-1">{PLANS[key].features.join(' • ')}</p>
+                  </button>
+                );
+              })}
               <div className="mt-4">
                 <Label>Promokod (ixtiyoriy)</Label>
                 <Input value={form.promocode} onChange={e => update('promocode', e.target.value)} placeholder="Do'stingizning promokodi" className="mt-1" />

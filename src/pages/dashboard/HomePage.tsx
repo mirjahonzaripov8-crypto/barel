@@ -1,6 +1,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency, formatNumber } from '@/lib/helpers';
-import { Fuel, TrendingUp, DollarSign, BarChart3 } from 'lucide-react';
+import { getStationFuelTypes, getCurrentStation } from '@/lib/store';
+import { Fuel, BarChart3 } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 
 export default function HomePage() {
@@ -8,7 +9,9 @@ export default function HomePage() {
   if (!company) return null;
 
   const lastDay = company.data[company.data.length - 1];
-  const fuelStats = company.fuelTypes.flatMap(ft => {
+  const stationIdx = getCurrentStation();
+  const stationFuels = getStationFuelTypes(company, stationIdx);
+  const fuelStats = stationFuels.flatMap(ft => {
     const count = ft.meterCount || 1;
     const meters = [];
     for (let m = 0; m < count; m++) {
