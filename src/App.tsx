@@ -66,6 +66,7 @@ const App = () => (
               <Route path="referrals" element={<ReferralsPage />} />
               <Route path="security" element={<SecurityPage />} />
               <Route path="ai" element={<AIAssistantPage />} />
+              <Route path="telegram" element={<TelegramPage />} />
             </Route>
             <Route path="/admin" element={<AdminRoute><SuperAdminPage /></AdminRoute>} />
             <Route path="*" element={<NotFound />} />

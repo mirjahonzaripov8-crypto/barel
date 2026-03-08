@@ -107,7 +107,7 @@ export const PLANS = {
       'Referal tizimi',
       'Ustuvor texnik yordam'
     ],
-    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/referrals', '/dashboard/security', '/dashboard/ai'],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/referrals', '/dashboard/security', '/dashboard/ai', '/dashboard/telegram'],
     canExportPdf: true,
     canExportExcel: true,
     hasCharts: true,
