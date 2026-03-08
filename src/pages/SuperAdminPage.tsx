@@ -285,6 +285,7 @@ export default function SuperAdminPage() {
     { id: 'companies' as Tab, icon: Building2, label: 'Korxonalar' },
     { id: 'payments' as Tab, icon: CreditCard, label: "To'lovlar", badge: pendingPayments.length },
     { id: 'features' as Tab, icon: Sparkles, label: "Funksiya so'rovlar", badge: pendingFeatures.length },
+    { id: 'card' as Tab, icon: Wallet, label: "Karta ma'lumotlari" },
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Xabarlar' },
   ];
 
