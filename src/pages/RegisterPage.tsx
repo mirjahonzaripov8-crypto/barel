@@ -24,7 +24,7 @@ export default function RegisterPage() {
   const [form, setForm] = useState({
     firstName: '', lastName: '', companyName: '', phone: '',
     stations: [''],
-    fuelTypes: defaultFuels.map(f => ({ ...f, selected: true })),
+    fuelTypes: defaultFuels.map(f => ({ ...f, selected: true, meterCount: f.meterCount || 1 })),
     plan: (searchParams.get('plan') as PlanKey) || 'STANDART' as PlanKey,
     promocode: '', login: '', password: '',
     securityPassword: '',
