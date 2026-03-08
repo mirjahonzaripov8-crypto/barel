@@ -98,6 +98,11 @@ export interface FeatureRequest {
   updated_at: string;
 }
 
+export interface AdminCardInfo {
+  cardNumber: string;
+  cardHolder: string;
+}
+
 const STORAGE_KEYS = {
   COMPANIES: 'barel_companies',
   CURRENT_COMPANY: 'barel_current_company',
@@ -105,9 +110,18 @@ const STORAGE_KEYS = {
   CURRENT_STATION: 'barel_current_station',
   PAYMENTS: 'barel_payments',
   FEATURE_REQUESTS: 'barel_feature_requests',
+  ADMIN_CARD: 'barel_admin_card',
   SUPERADMIN_KEY: 'ZARIPOVM',
   SUPERADMIN_PASSWORD: '201116ZM',
 };
+
+// Admin card info
+export function getAdminCard(): AdminCardInfo {
+  return loadJSON(STORAGE_KEYS.ADMIN_CARD, { cardNumber: '', cardHolder: '' });
+}
+export function saveAdminCard(card: AdminCardInfo) {
+  saveJSON(STORAGE_KEYS.ADMIN_CARD, card);
+}
 
 function loadJSON<T>(key: string, fallback: T): T {
   try {
