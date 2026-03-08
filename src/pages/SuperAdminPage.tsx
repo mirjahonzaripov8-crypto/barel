@@ -568,6 +568,49 @@ export default function SuperAdminPage() {
           </div>
         )}
 
+        {/* CARD SETTINGS */}
+        {tab === 'card' && (
+          <div className="animate-fade-in">
+            <h1 className="text-2xl font-extrabold text-foreground mb-6">Karta ma'lumotlari</h1>
+            <div className="bg-card border border-border rounded-xl p-6 max-w-lg space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Bu karta raqam va ism-familya barcha foydalanuvchilarga obuna to'lovi uchun ko'rsatiladi.
+              </p>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Karta raqami</label>
+                <Input
+                  value={cardNumber}
+                  onChange={e => setCardNumber(e.target.value)}
+                  placeholder="8600 1234 5678 9012"
+                  maxLength={19}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Karta egasi (Ism Familya)</label>
+                <Input
+                  value={cardHolder}
+                  onChange={e => setCardHolder(e.target.value)}
+                  placeholder="Zaripov Mansur"
+                />
+              </div>
+              <Button onClick={() => {
+                saveAdminCard({ cardNumber: cardNumber.trim(), cardHolder: cardHolder.trim() });
+                toast.success("Karta ma'lumotlari saqlandi!");
+              }} className="w-full">
+                Saqlash
+              </Button>
+
+              {cardNumber && (
+                <div className="mt-4 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5">
+                  <p className="text-xs text-muted-foreground mb-2">Hozirgi karta:</p>
+                  <p className="text-lg font-bold text-foreground tracking-widest">{cardNumber}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{cardHolder}</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* MESSAGES */}
         {tab === 'messages' && (
           <div className="animate-fade-in">
