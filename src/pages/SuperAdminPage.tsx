@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { getCompanies, saveCompanies, getPayments, savePayments, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, type Company, type Payment, type FeatureRequest } from '@/lib/store';
