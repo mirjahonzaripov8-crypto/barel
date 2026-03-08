@@ -7,7 +7,13 @@ import { useNavigate } from 'react-router-dom';
 
 export default function HomePage() {
   const { company } = useAuth();
+  const navigate = useNavigate();
   if (!company) return null;
+
+  const customFeatures = [
+    ...getActiveFeaturesByPlan(company.plan as any),
+    ...getTestingFeaturesByPlan(company.plan as any),
+  ];
 
   const lastDay = company.data[company.data.length - 1];
   const stationIdx = getCurrentStation();
