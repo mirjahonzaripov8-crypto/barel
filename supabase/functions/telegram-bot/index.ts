@@ -572,6 +572,49 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Handle callback_query (inline button presses)
+      if (update.callback_query) {
+        const callbackData = update.callback_query.data || '';
+        const cbChatId = String(update.callback_query.message.chat.id);
+        const callbackId = update.callback_query.id;
+
+        // Answer callback to remove loading state
+        await fetch(`${TELEGRAM_API}${botToken}/answerCallbackQuery`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ callback_query_id: callbackId }),
+        });
+
+        const supabase = getSupabase();
+        const session = await getSession(supabase, cbChatId);
+        const cbState = session?.state || 'IDLE';
+        const cbData = session?.data || {};
+
+        if (cbState === 'AWAITING_FUEL_TYPE' && callbackData.startsWith('fuel_')) {
+          if (callbackData === 'fuel_done') {
+            // Done selecting fuels
+            if (!cbData.fuels || cbData.fuels.length === 0) {
+              await sendMessage(botToken, cbChatId, '❌ Kamida bitta yoqilg\'i tanlang!');
+              return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+            }
+            await upsertSession(supabase, cbChatId, {
+              state: 'AWAITING_TERMINAL',
+              data: { ...cbData, step: 'TERMINAL' },
+            });
+            await sendMessage(botToken, cbChatId, '💳 Terminal summasini kiriting (so\'m):');
+            return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+          }
+
+          const selectedFuel = callbackData.replace('fuel_', '');
+          await upsertSession(supabase, cbChatId, {
+            state: 'AWAITING_END_VALUE',
+            data: { ...cbData, currentFuel: selectedFuel, step: 'END_VALUE' },
+          });
+          await sendMessage(botToken, cbChatId, `📊 <b>${selectedFuel}</b> uchun Oxirgi yangi ko'rsatkichni kiriting:`);
+          return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+        }
+      }
+
       return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
     }
 
