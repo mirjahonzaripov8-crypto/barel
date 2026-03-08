@@ -60,19 +60,25 @@ export default function MeterPage() {
     } else {
       setIsExistingRecord(false);
       setSavedAt(null);
-      // New day - "Oxirgi hisoblagich" (start) = previous day's end value
-      setFuels(company.fuelTypes.map(ft => {
-        const prevEnd = getPreviousEnd(ft.name, date);
-        return {
-          type: ft.name,
-          start: prevEnd,
-          sold: 0,
-          end: 0,
-          price: company.conf.prices[ft.name] || 0,
-          prixod: 0,
-          tannarx: 0,
-        };
-      }));
+      // New day - expand fuels based on meterCount
+      const expandedFuels: typeof fuels = [];
+      company.fuelTypes.forEach(ft => {
+        const count = ft.meterCount || 1;
+        for (let m = 0; m < count; m++) {
+          const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+          const prevEnd = getPreviousEnd(label, date);
+          expandedFuels.push({
+            type: label,
+            start: prevEnd,
+            sold: 0,
+            end: 0,
+            price: company.conf.prices[ft.name] || 0,
+            prixod: 0,
+            tannarx: 0,
+          });
+        }
+      });
+      setFuels(expandedFuels);
       setExpenses([]);
       setTerminal(0);
       setOperator(company.ops.op1 || '');
