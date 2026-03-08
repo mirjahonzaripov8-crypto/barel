@@ -121,16 +121,27 @@ export const PLANS = {
 export type PlanKey = keyof typeof PLANS;
 
 // Multi-station pricing: 1 station = base, 2-5 stations = 20% off, 6+ = no discount on extras
-export function calculatePlanPrice(plan: PlanKey, stationCount: number): { total: number; originalTotal: number; discount: number } {
+// Valid promocode adds extra 5% off the final price
+export function calculatePlanPrice(plan: PlanKey, stationCount: number, hasValidPromo: boolean = false): { total: number; originalTotal: number; discount: number; promoDiscount: number; finalTotal: number } {
   const base = PLANS[plan].price;
+  let originalTotal: number;
+  let total: number;
+
   if (stationCount <= 1) {
-    return { total: base, originalTotal: base, discount: 0 };
+    originalTotal = base;
+    total = base;
+  } else {
+    const discounted = Math.min(stationCount, 5);
+    const full = Math.max(0, stationCount - 5);
+    originalTotal = base * stationCount;
+    total = Math.round(base * discounted * 0.8 + base * full);
   }
-  const discounted = Math.min(stationCount, 5);
-  const full = Math.max(0, stationCount - 5);
-  const originalTotal = base * stationCount;
-  const total = Math.round(base * discounted * 0.8 + base * full);
-  return { total, originalTotal, discount: originalTotal - total };
+
+  const stationDiscount = originalTotal - total;
+  const promoDiscount = hasValidPromo ? Math.round(total * 0.05) : 0;
+  const finalTotal = total - promoDiscount;
+
+  return { total, originalTotal, discount: stationDiscount, promoDiscount, finalTotal };
 }
 
 export function canExportPdf(plan: PlanKey): boolean {
