@@ -188,7 +188,7 @@ export function getNavItemsForPlan(plan: PlanKey): readonly string[] {
 
 // Get plan features merged with active custom features
 export function getPlanFeaturesWithCustom(plan: PlanKey): string[] {
-  const base = [...PLANS[plan].features];
+  const base: string[] = [...PLANS[plan].features];
   const active = getActiveFeaturesByPlan(plan);
   const testing = getTestingFeaturesByPlan(plan);
   for (const f of active) {
