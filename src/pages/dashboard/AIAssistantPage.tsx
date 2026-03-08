@@ -66,6 +66,21 @@ function generateAnswer(question: string, company: any): string {
   const q = question.toLowerCase().trim();
   const analysis = getCompanyAnalysis(company);
 
+  // Check completed feature request prompts — these act as custom AI knowledge
+  if (company) {
+    const doneRequests = getFeatureRequests().filter(
+      r => r.companyKey === company.key && r.status === 'done' && r.adminPrompt
+    );
+    for (const req of doneRequests) {
+      // Check if question relates to this feature by matching keywords from description
+      const descWords = req.description.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const matchCount = descWords.filter(w => q.includes(w)).length;
+      if (matchCount >= 1 || q.includes(req.description.toLowerCase().slice(0, 15))) {
+        return `✅ ${req.adminPrompt}`;
+      }
+    }
+  }
+
   if (!analysis) return "Korxona ma'lumotlari topilmadi. Iltimos, tizimga qaytadan kiring.";
   if (analysis.daysCount === 0) return "Hozircha hech qanday sotuv ma'lumoti kiritilmagan. Hisoblagich sahifasidan kunlik ma'lumot kiritishni boshlang.";
 
@@ -171,7 +186,17 @@ function generateAnswer(question: string, company: any): string {
   }
 
   if (/yordam|help|nima|qanday|bilasanmi|nimalar/.test(q)) {
-    return `Men quyidagi savollarga javob bera olaman:\n\n• 💰 Sotuv va tushum haqida\n• 📉 Xarajatlar tahlili\n• 💵 Foyda va zarar\n• 💳 Terminal ma'lumotlari\n• ⛽ Mahsulotlar tahlili\n• 💡 Maslahat va tavsiyalar\n• 🏢 Korxona ma'lumotlari\n\nMasalan: "Foydamni ko'rsat", "Maslahat ber", "Qaysi mahsulot eng foydali?"`;
+    let helpText = `Men quyidagi savollarga javob bera olaman:\n\n• 💰 Sotuv va tushum haqida\n• 📉 Xarajatlar tahlili\n• 💵 Foyda va zarar\n• 💳 Terminal ma'lumotlari\n• ⛽ Mahsulotlar tahlili\n• 💡 Maslahat va tavsiyalar\n• 🏢 Korxona ma'lumotlari`;
+    // Show custom features
+    if (company) {
+      const doneReqs = getFeatureRequests().filter(r => r.companyKey === company.key && r.status === 'done' && r.adminPrompt);
+      if (doneReqs.length > 0) {
+        helpText += `\n\n🔧 Maxsus funksiyalar:\n`;
+        doneReqs.forEach(r => { helpText += `• ${r.description}\n`; });
+      }
+    }
+    helpText += `\nMasalan: "Foydamni ko'rsat", "Maslahat ber", "Qaysi mahsulot eng foydali?"`;
+    return helpText;
   }
 
   const appKeywords = /sotuv|sotil|tushum|xarajat|harajat|foyda|zarar|terminal|mahsulot|yoqilgi|benzin|propan|dizel|metan|narx|pul|summa|kassa|litr|korxona|zapravka|ishchi|operator|plomba|hisoblagich|moliya|arxiv|referal|tarif|obuna|maslahat|tavsiya|tahlil|statistika|grafik|pdf|parol|lock|blok/;
