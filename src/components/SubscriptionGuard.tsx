@@ -145,13 +145,17 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
             </p>
           </div>
 
-          {card.cardNumber && (
-            <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5">
-              <p className="text-xs text-muted-foreground mb-2">To'lov kartasi:</p>
-              <p className="text-xl font-bold text-foreground tracking-widest">{card.cardNumber}</p>
-              <p className="text-sm text-muted-foreground mt-1">{card.cardHolder}</p>
-            </div>
-          )}
+          <div className="bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5">
+            <p className="text-xs text-muted-foreground mb-2">To'lov kartasi:</p>
+            {card.cardNumber ? (
+              <>
+                <p className="text-xl font-bold text-foreground tracking-widest">{card.cardNumber}</p>
+                <p className="text-sm text-muted-foreground mt-1">{card.cardHolder}</p>
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Admin karta ma'lumotlarini hali kiritmagam. Iltimos, admin bilan bog'laning.</p>
+            )}
+          </div>
 
           <div className="space-y-3">
             <label className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
