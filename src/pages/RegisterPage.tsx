@@ -135,15 +135,31 @@ export default function RegisterPage() {
           )}
           {step === 4 && (
             <div className="space-y-3 animate-fade-in">
-              <Label>Yoqilg'i turlari</Label>
+              <Label>Yoqilg'i turlari va hisoblagichlar soni</Label>
+              <p className="text-xs text-muted-foreground">Har bir mahsulot uchun nechta hisoblagich (kolon) borligini belgilang</p>
               {form.fuelTypes.map((f, i) => (
-                <button key={f.name} onClick={() => toggleFuel(i)} className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-colors ${f.selected ? 'border-primary bg-secondary' : 'border-border'}`}>
-                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center ${f.selected ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
-                    {f.selected && <Check className="h-3 w-3 text-primary-foreground" />}
-                  </div>
-                  <span className="font-medium text-foreground">{f.name}</span>
-                  <span className="text-muted-foreground text-sm ml-auto">({f.unit})</span>
-                </button>
+                <div key={f.name} className={`w-full rounded-lg border transition-colors ${f.selected ? 'border-primary bg-secondary' : 'border-border'}`}>
+                  <button onClick={() => toggleFuel(i)} className="w-full flex items-center gap-3 p-3">
+                    <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 ${f.selected ? 'border-primary bg-primary' : 'border-muted-foreground'}`}>
+                      {f.selected && <Check className="h-3 w-3 text-primary-foreground" />}
+                    </div>
+                    <span className="font-medium text-foreground">{f.name}</span>
+                    <span className="text-muted-foreground text-sm ml-auto">({f.unit})</span>
+                  </button>
+                  {f.selected && (
+                    <div className="px-3 pb-3 flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Hisoblagichlar soni:</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={f.meterCount || 1}
+                        onChange={e => updateMeterCount(i, Number(e.target.value))}
+                        className="w-20 h-8 text-sm"
+                      />
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           )}
