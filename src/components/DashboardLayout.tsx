@@ -7,6 +7,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isRouteAllowed, type PlanKey } from '@/lib/helpers';
+import SubscriptionGuard from '@/components/SubscriptionGuard';
 
 const allNavItems = [
   { path: '/dashboard', icon: Home, label: 'Bosh sahifa' },
@@ -187,9 +188,11 @@ export default function DashboardLayout() {
           </div>
         </header>
         <main className="flex-1 p-4 lg:p-6 overflow-y-auto">
-          <div className="animate-fade-in">
-            <Outlet />
-          </div>
+          <SubscriptionGuard>
+            <div className="animate-fade-in">
+              <Outlet />
+            </div>
+          </SubscriptionGuard>
         </main>
       </div>
     </div>

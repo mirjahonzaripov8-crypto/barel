@@ -1,7 +1,7 @@
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCompanies, saveCompanies, getPayments, savePayments, getFeatureRequests, saveFeatureRequests, type Company, type Payment, type FeatureRequest } from '@/lib/store';
+import { getCompanies, saveCompanies, getPayments, savePayments, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, type Company, type Payment, type FeatureRequest } from '@/lib/store';
 import { formatCurrency, formatDate, formatNumber, PLANS, type PlanKey } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,11 +11,11 @@ import {
 } from '@/components/ui/dialog';
 import {
   Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle,
-  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles
+  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText, Sparkles, Wallet
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features';
+type Tab = 'home' | 'companies' | 'payments' | 'messages' | 'features' | 'card';
 
 function getStatusLabel(status: string) {
   switch (status) {
@@ -69,6 +69,10 @@ export default function SuperAdminPage() {
   const [featurePrice, setFeaturePrice] = useState('');
   const [featurePromptOpen, setFeaturePromptOpen] = useState(false);
   const [featurePrompt, setFeaturePrompt] = useState('');
+
+  // Card info
+  const [cardNumber, setCardNumber] = useState(() => getAdminCard().cardNumber);
+  const [cardHolder, setCardHolder] = useState(() => getAdminCard().cardHolder);
 
   const companies = getCompanies();
   const payments = getPayments();
@@ -281,6 +285,7 @@ export default function SuperAdminPage() {
     { id: 'companies' as Tab, icon: Building2, label: 'Korxonalar' },
     { id: 'payments' as Tab, icon: CreditCard, label: "To'lovlar", badge: pendingPayments.length },
     { id: 'features' as Tab, icon: Sparkles, label: "Funksiya so'rovlar", badge: pendingFeatures.length },
+    { id: 'card' as Tab, icon: Wallet, label: "Karta ma'lumotlari" },
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Xabarlar' },
   ];
 
@@ -560,6 +565,49 @@ export default function SuperAdminPage() {
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* CARD SETTINGS */}
+        {tab === 'card' && (
+          <div className="animate-fade-in">
+            <h1 className="text-2xl font-extrabold text-foreground mb-6">Karta ma'lumotlari</h1>
+            <div className="bg-card border border-border rounded-xl p-6 max-w-lg space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Bu karta raqam va ism-familya barcha foydalanuvchilarga obuna to'lovi uchun ko'rsatiladi.
+              </p>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Karta raqami</label>
+                <Input
+                  value={cardNumber}
+                  onChange={e => setCardNumber(e.target.value)}
+                  placeholder="8600 1234 5678 9012"
+                  maxLength={19}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-foreground mb-1.5 block">Karta egasi (Ism Familya)</label>
+                <Input
+                  value={cardHolder}
+                  onChange={e => setCardHolder(e.target.value)}
+                  placeholder="Zaripov Mansur"
+                />
+              </div>
+              <Button onClick={() => {
+                saveAdminCard({ cardNumber: cardNumber.trim(), cardHolder: cardHolder.trim() });
+                toast.success("Karta ma'lumotlari saqlandi!");
+              }} className="w-full">
+                Saqlash
+              </Button>
+
+              {cardNumber && (
+                <div className="mt-4 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-xl p-5">
+                  <p className="text-xs text-muted-foreground mb-2">Hozirgi karta:</p>
+                  <p className="text-lg font-bold text-foreground tracking-widest">{cardNumber}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{cardHolder}</p>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
