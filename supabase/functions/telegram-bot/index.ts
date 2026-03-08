@@ -235,9 +235,22 @@ Deno.serve(async (req) => {
           return ok();
         }
 
-        // === MENU ===
+        // === MENU CALLBACKS ===
         if (cbData === 'menu_kiritish') {
           await startDataEntry(botToken, supabase, cbChatId, sd);
+          return ok();
+        }
+        if (cbData === 'menu_login') {
+          await upsertSession(supabase, cbChatId, { state: 'AWAITING_LOGIN', data: {} });
+          await sendMessage(botToken, cbChatId, '👤 Loginingizni kiriting:');
+          return ok();
+        }
+        if (cbData === 'menu_help') {
+          await sendMessage(botToken, cbChatId, `📖 <b>Yordam</b>\n\n/login - Kirish\n/kiritish - Ma'lumot kiritish\n/cancel - Bekor qilish`);
+          return ok();
+        }
+        if (cbData === 'prixod_0') {
+          await addFuelAndContinue(botToken, supabase, cbChatId, sd, 0);
           return ok();
         }
 
