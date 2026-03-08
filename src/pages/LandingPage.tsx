@@ -1,7 +1,7 @@
 import { Fuel, BarChart3, Shield, Clock, Users, FileText, Zap, Award, ChevronRight, Check, Phone, MapPin, Send, Instagram } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { PLANS, type PlanKey } from '@/lib/helpers';
+import { PLANS, type PlanKey, getPlanFeaturesWithCustom } from '@/lib/helpers';
 import { getContacts } from '@/lib/store';
 
 const steps = [
