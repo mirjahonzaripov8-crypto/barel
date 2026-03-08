@@ -66,6 +66,21 @@ function generateAnswer(question: string, company: any): string {
   const q = question.toLowerCase().trim();
   const analysis = getCompanyAnalysis(company);
 
+  // Check completed feature request prompts — these act as custom AI knowledge
+  if (company) {
+    const doneRequests = getFeatureRequests().filter(
+      r => r.companyKey === company.key && r.status === 'done' && r.adminPrompt
+    );
+    for (const req of doneRequests) {
+      // Check if question relates to this feature by matching keywords from description
+      const descWords = req.description.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+      const matchCount = descWords.filter(w => q.includes(w)).length;
+      if (matchCount >= 1 || q.includes(req.description.toLowerCase().slice(0, 15))) {
+        return `✅ ${req.adminPrompt}`;
+      }
+    }
+  }
+
   if (!analysis) return "Korxona ma'lumotlari topilmadi. Iltimos, tizimga qaytadan kiring.";
   if (analysis.daysCount === 0) return "Hozircha hech qanday sotuv ma'lumoti kiritilmagan. Hisoblagich sahifasidan kunlik ma'lumot kiritishni boshlang.";
 
