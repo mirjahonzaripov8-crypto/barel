@@ -98,8 +98,6 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
     return () => clearInterval(interval);
   }, [company, user, getExpiryInfo, card]);
 
-  // Looker bypasses subscription checks entirely
-  if (isLooker) return <>{children}</>;
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

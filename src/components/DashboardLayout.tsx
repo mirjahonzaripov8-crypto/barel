@@ -52,7 +52,7 @@ export default function DashboardLayout() {
 
   const handleLogout = () => {
     logout();
-    navigate(isLooker ? '/looker' : '/');
+    navigate('/');
   };
   const isActive = (path: string) => location.pathname === path;
   const stationName = company?.stations?.[0] || company?.name || '';
