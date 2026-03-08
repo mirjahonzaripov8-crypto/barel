@@ -70,7 +70,7 @@ export const PLANS = {
     name: 'Standart', 
     badge: '🥈',
     popular: true,
-    price: 450000, 
+    price: 399999, 
     maxLogins: 6,
     description: 'Eng ommabop tarif - professional hisobotlar va nazorat',
     features: [
