@@ -649,6 +649,11 @@ export default function SuperAdminPage() {
             </div>
           </div>
         )}
+
+        {/* FACE ID */}
+        {tab === 'faceid' && (
+          <FaceIdSection />
+        )}
       </main>
 
       {/* Security Confirmation Dialog */}
