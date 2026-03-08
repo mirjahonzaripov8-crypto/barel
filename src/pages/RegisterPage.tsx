@@ -144,7 +144,10 @@ export default function RegisterPage() {
   };
 
   const validStationCount = form.stations.filter(s => s.trim()).length;
-  const pricing = calculatePlanPrice(form.plan, validStationCount);
+  
+  // Validate promocode - check if any company has this promocode
+  const promoValid = form.promocode.trim() !== '' && getCompanies().some(c => c.promocode === form.promocode.trim().toUpperCase());
+  const pricing = calculatePlanPrice(form.plan, validStationCount, promoValid);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-secondary/60 to-background p-4">
