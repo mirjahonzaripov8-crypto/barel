@@ -349,13 +349,11 @@ export default function AIAssistantPage() {
                   </div>
                 )}
                 {r.status === 'priced' && (
-                  <Button size="sm" className="mt-2" onClick={() => {
-                    updateFeatureRequest(r.id, (req: FeatureRequest) => ({ ...req, status: 'paid' as const, updated_at: new Date().toISOString() }));
-                    toast.success("To'lov tasdiqlandi! Admin tez orada funksiyani qo'shadi.");
-                    refreshRequests();
-                  }}>
-                    To'lovni tasdiqlash
-                  </Button>
+                  <FeaturePaymentSection
+                    request={r}
+                    onPaid={() => refreshRequests()}
+                    companyKey={company?.key || ''}
+                  />
                 )}
                 {r.status === 'done' && r.adminPrompt && (
                   <div className="mt-2 bg-success/5 border border-success/20 rounded-md p-3">
