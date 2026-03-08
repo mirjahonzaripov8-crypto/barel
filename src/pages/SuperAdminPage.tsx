@@ -185,7 +185,7 @@ export default function SuperAdminPage() {
     });
   };
 
-  const viewReceipt = (payment: Payment) => {
+  const viewReceipt = (payment: any) => {
     if (payment.receipt_base64) {
       setReceiptData(payment.receipt_base64);
       setReceiptInfo(`Holati: ${payment.status} · Sana: ${formatDate(payment.payment_date)} · Summa: ${formatCurrency(payment.amount)}`);
