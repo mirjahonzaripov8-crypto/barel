@@ -161,6 +161,30 @@ export function saveContacts(contacts: ContactInfo) {
   saveJSON(STORAGE_KEYS.ADMIN_CONTACTS, contacts);
 }
 
+// Custom features
+export function getCustomFeatures(): CustomFeature[] {
+  return loadJSON(STORAGE_KEYS.CUSTOM_FEATURES, []);
+}
+export function saveCustomFeatures(features: CustomFeature[]) {
+  saveJSON(STORAGE_KEYS.CUSTOM_FEATURES, features);
+}
+export function addCustomFeature(feature: CustomFeature) {
+  const all = getCustomFeatures();
+  all.push(feature);
+  saveCustomFeatures(all);
+}
+export function updateCustomFeature(id: string, updater: (f: CustomFeature) => CustomFeature) {
+  const all = getCustomFeatures();
+  const idx = all.findIndex(f => f.id === id);
+  if (idx >= 0) {
+    all[idx] = updater(all[idx]);
+    saveCustomFeatures(all);
+  }
+}
+export function getActiveFeaturesByPlan(plan: 'START' | 'STANDART' | 'PREMIUM'): CustomFeature[] {
+  return getCustomFeatures().filter(f => f.status === 'active' && f.targetPlan === plan);
+}
+
 function loadJSON<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
