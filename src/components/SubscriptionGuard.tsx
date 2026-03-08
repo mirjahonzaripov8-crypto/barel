@@ -60,7 +60,7 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
   }, [company, getExpiryInfo]);
 
   useEffect(() => {
-    if (!company || !user || user.role !== 'BOSS' || isLooker) return;
+    if (!company || !user || user.role !== 'BOSS') return;
     const info = getExpiryInfo();
     if (!info.locked) return;
 
