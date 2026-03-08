@@ -41,7 +41,6 @@ export default function DashboardLayout() {
 
   // Redirect if trying to access restricted route
   useEffect(() => {
-    if (isLooker) return; // Looker bypasses all restrictions
     if (!isRouteAllowed(plan, location.pathname)) {
       navigate('/dashboard/meter');
       return;
@@ -49,7 +48,7 @@ export default function DashboardLayout() {
     if (isOperator && location.pathname !== '/dashboard/meter') {
       navigate('/dashboard/meter');
     }
-  }, [location.pathname, plan, navigate, isOperator, isLooker]);
+  }, [location.pathname, plan, navigate, isOperator]);
 
   const handleLogout = () => {
     logout();
