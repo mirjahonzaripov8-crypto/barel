@@ -27,10 +27,9 @@ import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
-  const { isLoggedIn, isSuperAdmin, isLooker, company } = useAuth();
+  const { isLoggedIn, isSuperAdmin } = useAuth();
   if (!isLoggedIn) return <Navigate to="/login" replace />;
   if (isSuperAdmin) return <Navigate to="/admin" replace />;
-  if (isLooker && !company) return <Navigate to="/looker" replace />;
   return <>{children}</>;
 }
 
