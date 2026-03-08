@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Vault, Plus, Minus, ArrowUpCircle, ArrowDownCircle, Calendar, Wallet, TrendingUp, TrendingDown } from 'lucide-react';
 import { toast } from 'sonner';
-import { formatCurrency, formatDateTime, getTodayStr } from '@/lib/helpers';
+import { formatCurrency } from '@/lib/helpers';
 
 export interface SafeTransaction {
   id: string;
@@ -43,18 +43,9 @@ export default function SafePage() {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
 
-  useState(() => {
+  useEffect(() => {
     if (company) setTransactions(getSafeTransactions(company.key));
-  });
-
-  if (!company || !user) return null;
-  const [addOpen, setAddOpen] = useState(false);
-  const [withdrawOpen, setWithdrawOpen] = useState(false);
-  const [amount, setAmount] = useState('');
-  const [reason, setReason] = useState('');
-  const [personName, setPersonName] = useState('');
-  const [dateFrom, setDateFrom] = useState('');
-  const [dateTo, setDateTo] = useState('');
+  }, [company?.key]);
 
   const balance = useMemo(() =>
     transactions.reduce((sum, t) => sum + (t.type === 'in' ? t.amount : -t.amount), 0),
@@ -70,6 +61,8 @@ export default function SafePage() {
 
   const totalIn = useMemo(() => filtered.filter(t => t.type === 'in').reduce((s, t) => s + t.amount, 0), [filtered]);
   const totalOut = useMemo(() => filtered.filter(t => t.type === 'out').reduce((s, t) => s + t.amount, 0), [filtered]);
+
+  if (!company || !user) return null;
 
   function addMoney() {
     const val = Number(amount);
