@@ -44,7 +44,7 @@ export default function ArchivePage() {
 
   const openEdit = (idx: number) => {
     const pw = prompt("Tahrirlash uchun maxsus parolni kiriting:");
-    if (pw !== '20113') { toast.error("Parol noto'g'ri!"); return; }
+    if (pw !== company.securityPassword) { toast.error("Parol noto'g'ri!"); return; }
     const d = company.data[idx];
     setEditIdx(idx);
     setEditData({ ...d, fuels: d.fuels.map(f => ({ ...f })), expenses: d.expenses.map(e => ({ ...e })) });
