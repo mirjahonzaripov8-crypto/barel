@@ -459,38 +459,6 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Handle menu_login callback separately
-      if (update.callback_query) {
-        const cb = update.callback_query;
-        const cbChatId = String(cb.message.chat.id);
-        if (cb.data === 'menu_login') {
-          await fetch(`${TELEGRAM_API}${botToken}/answerCallbackQuery`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ callback_query_id: cb.id }),
-          });
-          await upsertSession(supabase, cbChatId, { state: 'AWAITING_LOGIN', data: {} });
-          await sendMessage(botToken, cbChatId, '👤 Loginingizni kiriting:');
-          return ok();
-        }
-        if (cb.data === 'prixod_0') {
-          await fetch(`${TELEGRAM_API}${botToken}/answerCallbackQuery`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ callback_query_id: cb.id }),
-          });
-          const session = await getSession(supabase, cbChatId);
-          const sd = session?.data || {};
-          await addFuelAndContinue(botToken, supabase, cbChatId, sd, 0);
-          return ok();
-        }
-        if (cb.data === 'menu_help') {
-          await fetch(`${TELEGRAM_API}${botToken}/answerCallbackQuery`, {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ callback_query_id: cb.id }),
-          });
-          await sendMessage(botToken, cbChatId, `📖 <b>Yordam</b>\n\n/login - Kirish\n/kiritish - Ma'lumot kiritish\n/cancel - Bekor qilish`);
-          return ok();
-        }
-      }
 
       return ok();
     }
