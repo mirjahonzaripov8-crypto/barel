@@ -76,17 +76,22 @@ export default function SuperAdminPage() {
   const [cardHolder, setCardHolder] = useState(() => getAdminCard().cardHolder);
 
   const companies = getCompanies();
-  const payments = getPayments();
+  const [payments, setPayments] = useState<any[]>([]);
   const featureRequests = getFeatureRequests();
-  const pendingPayments = payments.filter(p => p.status === 'pending');
+  const pendingPayments = payments.filter((p: any) => p.status === 'pending');
   const pendingFeatures = featureRequests.filter(f => f.status === 'pending' || f.status === 'paid');
   const activeCount = companies.filter(c => c.subscription.status === 'active' || c.subscription.status === 'trial').length;
 
   const forceRefresh = () => setRefresh(r => r + 1);
 
-  // Auto-refresh every 5 seconds to pick up new payments/requests
+  // Load payments from DB
   useEffect(() => {
-    const interval = setInterval(() => setRefresh(r => r + 1), 5000);
+    const loadPayments = async () => {
+      const { data } = await supabase.from('payments').select('*').order('created_at', { ascending: false });
+      if (data) setPayments(data);
+    };
+    loadPayments();
+    const interval = setInterval(loadPayments, 5000);
     return () => clearInterval(interval);
   }, []);
 
