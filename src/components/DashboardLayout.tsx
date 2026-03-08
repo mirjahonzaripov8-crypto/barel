@@ -102,7 +102,7 @@ export default function DashboardLayout() {
             >
               <item.icon className="h-4 w-4 shrink-0" />
               {item.label}
-              {item.minPlan === 'PREMIUM' && <Crown className="h-3 w-3 ml-auto text-yellow-500" />}
+              {'minPlan' in item && item.minPlan === 'PREMIUM' && <Crown className="h-3 w-3 ml-auto text-yellow-500" />}
             </button>
           ))}
         </nav>
