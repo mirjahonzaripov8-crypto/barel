@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCompanies, saveCompanies, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, getContacts, saveContacts, getCustomFeatures, addCustomFeature, updateCustomFeature, type Company, type FeatureRequest, type CustomFeature } from '@/lib/store';
+import { getCompanies, saveCompanies, getFeatureRequests, saveFeatureRequests, getAdminCard, saveAdminCard, getContacts, saveContacts, getCustomFeatures, addCustomFeature, updateCustomFeature, createOrUpdateDemoCompany, removeDemoCompany, type Company, type FeatureRequest, type CustomFeature } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { formatCurrency, formatDate, formatNumber, PLANS, type PlanKey } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
@@ -93,6 +93,8 @@ export default function SuperAdminPage() {
   const [newFeaturePlan, setNewFeaturePlan] = useState<'START' | 'STANDART' | 'PREMIUM'>('STANDART');
   const [editingFeature, setEditingFeature] = useState<CustomFeature | null>(null);
   const [editPrompt, setEditPrompt] = useState('');
+  const [demoDialogOpen, setDemoDialogOpen] = useState(false);
+  const [demoFeatureTitle, setDemoFeatureTitle] = useState('');
 
   const companies = getCompanies();
   const customFeatures = getCustomFeatures();
@@ -855,7 +857,10 @@ export default function SuperAdminPage() {
                                 testedAt: new Date().toISOString(),
                                 updated_at: new Date().toISOString(),
                               }));
-                              toast.success("Demo test boshlandi! Funksiyani tekshiring.");
+                              // Create demo company with the target plan
+                              createOrUpdateDemoCompany(cf.targetPlan, cf.title);
+                              setDemoFeatureTitle(cf.title);
+                              setDemoDialogOpen(true);
                               forceRefresh();
                             });
                           }}>
@@ -874,6 +879,13 @@ export default function SuperAdminPage() {
                       )}
                       {cf.status === 'testing' && (
                         <>
+                          <Button size="sm" variant="secondary" onClick={() => {
+                            createOrUpdateDemoCompany(cf.targetPlan, cf.title);
+                            setDemoFeatureTitle(cf.title);
+                            setDemoDialogOpen(true);
+                          }}>
+                            <Eye className="h-3 w-3 mr-1" /> Demo ochish
+                          </Button>
                           <Button size="sm" className="bg-success hover:bg-success/90 text-success-foreground" onClick={() => {
                             requireSecurity(() => {
                               updateCustomFeature(cf.id, f => ({
@@ -882,6 +894,8 @@ export default function SuperAdminPage() {
                                 deployedAt: new Date().toISOString(),
                                 updated_at: new Date().toISOString(),
                               }));
+                              // Clean up demo company
+                              removeDemoCompany();
                               toast.success(`"${cf.title}" funksiyasi ${PLANS[cf.targetPlan].name} tarifiga qo'shildi! ✅`);
                               forceRefresh();
                             });
@@ -892,6 +906,7 @@ export default function SuperAdminPage() {
                             updateCustomFeature(cf.id, f => ({
                               ...f, status: 'draft', updated_at: new Date().toISOString()
                             }));
+                            removeDemoCompany();
                             toast.info("Qayta qoralamaga qaytarildi.");
                             forceRefresh();
                           }}>
@@ -901,6 +916,7 @@ export default function SuperAdminPage() {
                             updateCustomFeature(cf.id, f => ({
                               ...f, status: 'rejected', updated_at: new Date().toISOString()
                             }));
+                            removeDemoCompany();
                             toast.success("Funksiya rad etildi.");
                             forceRefresh();
                           }}>
@@ -958,6 +974,54 @@ export default function SuperAdminPage() {
                 </DialogContent>
               </Dialog>
             )}
+
+            {/* Demo credentials dialog */}
+            <Dialog open={demoDialogOpen} onOpenChange={setDemoDialogOpen}>
+              <DialogContent className="sm:max-w-md">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <Play className="h-5 w-5 text-primary" /> Demo test tayyor!
+                  </DialogTitle>
+                  <DialogDescription>
+                    "{demoFeatureTitle}" funksiyasini test qilish uchun demo akkaunt yaratildi.
+                  </DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <div className="bg-secondary/50 rounded-lg p-4 space-y-3">
+                    <p className="text-sm font-medium text-foreground">Demo kirish ma'lumotlari:</p>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-xs text-muted-foreground">Login</p>
+                        <p className="text-lg font-bold text-primary font-mono">demo</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-muted-foreground">Parol</p>
+                        <p className="text-lg font-bold text-primary font-mono">demo</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-warning/10 border border-warning/20 rounded-lg p-3">
+                    <p className="text-xs text-warning font-medium">⚠️ Qanday test qilish:</p>
+                    <ol className="text-xs text-muted-foreground mt-1 space-y-1 list-decimal list-inside">
+                      <li>Hozirgi sahifadan chiqing (Chiqish tugmasi)</li>
+                      <li>Login: <b>demo</b>, Parol: <b>demo</b> bilan kiring</li>
+                      <li>Funksiyani tekshiring</li>
+                      <li>Qayta SuperAdmin ga kiring va tasdiqlang yoki rad eting</li>
+                    </ol>
+                  </div>
+                </div>
+                <DialogFooter className="gap-2">
+                  <Button variant="outline" onClick={() => setDemoDialogOpen(false)}>Yopish</Button>
+                  <Button onClick={() => {
+                    setDemoDialogOpen(false);
+                    logout();
+                    navigate('/login');
+                  }}>
+                    <LogOut className="h-4 w-4 mr-2" /> Demo ga o'tish
+                  </Button>
+                </DialogFooter>
+              </DialogContent>
+            </Dialog>
           </div>
         )}
       </main>

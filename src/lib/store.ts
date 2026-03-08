@@ -184,6 +184,67 @@ export function updateCustomFeature(id: string, updater: (f: CustomFeature) => C
 export function getActiveFeaturesByPlan(plan: 'START' | 'STANDART' | 'PREMIUM'): CustomFeature[] {
   return getCustomFeatures().filter(f => f.status === 'active' && f.targetPlan === plan);
 }
+export function getTestingFeaturesByPlan(plan: 'START' | 'STANDART' | 'PREMIUM'): CustomFeature[] {
+  return getCustomFeatures().filter(f => f.status === 'testing' && f.targetPlan === plan);
+}
+
+// Demo company for feature testing
+const DEMO_COMPANY_KEY = 'demo_test_company';
+
+export function createOrUpdateDemoCompany(plan: 'START' | 'STANDART' | 'PREMIUM', featureTitle: string): void {
+  const companies = getCompanies();
+  const existingIdx = companies.findIndex(c => c.key === DEMO_COMPANY_KEY);
+  
+  const demoCompany: Company = {
+    key: DEMO_COMPANY_KEY,
+    name: `Demo Test — ${featureTitle}`,
+    phone: '+998000000000',
+    stations: ['Demo Zapravka'],
+    fuelTypes: [
+      { name: 'AI-92', unit: 'litr', meterCount: 1 },
+      { name: 'AI-95', unit: 'litr', meterCount: 1 },
+      { name: 'Dizel', unit: 'litr', meterCount: 1 },
+    ],
+    stationConfigs: [{
+      fuelTypes: [
+        { name: 'AI-92', unit: 'litr', meterCount: 1 },
+        { name: 'AI-95', unit: 'litr', meterCount: 1 },
+        { name: 'Dizel', unit: 'litr', meterCount: 1 },
+      ]
+    }],
+    plan,
+    subscription: {
+      status: 'active',
+      trial_end_date: new Date(Date.now() + 365 * 86400000).toISOString(),
+      active_until: new Date(Date.now() + 365 * 86400000).toISOString(),
+    },
+    promocode: 'DEMO',
+    users: [
+      { login: 'demo', password: 'demo', name: 'Demo Boss', role: 'BOSS' },
+      { login: 'demo_op', password: 'demo', name: 'Demo Operator', role: 'OPERATOR' },
+    ],
+    data: [],
+    conf: { prices: { 'AI-92': 12500, 'AI-95': 13500, 'Dizel': 14000 }, fix: 0 },
+    logs: [],
+    locks: { plomba: false, start: false, main: false },
+    ops: { op1: '', op2: '' },
+    plomba: [],
+    securityPassword: 'demo',
+    created_at: new Date().toISOString(),
+  };
+
+  if (existingIdx >= 0) {
+    companies[existingIdx] = demoCompany;
+  } else {
+    companies.push(demoCompany);
+  }
+  saveCompanies(companies);
+}
+
+export function removeDemoCompany(): void {
+  const companies = getCompanies().filter(c => c.key !== DEMO_COMPANY_KEY);
+  saveCompanies(companies);
+}
 
 function loadJSON<T>(key: string, fallback: T): T {
   try {
