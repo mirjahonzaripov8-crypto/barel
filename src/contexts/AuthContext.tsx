@@ -40,15 +40,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, [state.user]);
 
-  const setLookerCompany = useCallback((companyKey: string) => {
-    const company = getCompanyByKey(companyKey);
-    if (company) {
-      const userData = { login: '__looker__', role: 'BOSS', name: 'Kuzatuvchi', companyKey };
-      setCurrentUser(userData);
-      setCurrentCompanyKey(companyKey);
-      setState({ isLoggedIn: true, isSuperAdmin: false, isLooker: true, user: userData, company });
-    }
-  }, []);
 
   const login = useCallback((username: string, password: string) => {
     const result = authenticate(username, password);
