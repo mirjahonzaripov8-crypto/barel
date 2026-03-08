@@ -29,9 +29,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const user = getCurrentUser();
     if (user) {
       const company = getCompanyByKey(user.companyKey);
-      return { isLoggedIn: true, isSuperAdmin: false, user, company: company || null };
+      return { isLoggedIn: true, isSuperAdmin: false, isLooker: false, user, company: company || null };
     }
-    return { isLoggedIn: false, isSuperAdmin: false, user: null, company: null };
+    return { isLoggedIn: false, isSuperAdmin: false, isLooker: false, user: null, company: null };
   });
 
   const refreshCompany = useCallback(() => {
