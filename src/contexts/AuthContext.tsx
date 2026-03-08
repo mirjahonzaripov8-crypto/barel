@@ -46,10 +46,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!result.success) {
       return { success: false, error: 'Login yoki parol noto\'g\'ri!' };
     }
-    if (result.isLooker) {
-      setState({ isLoggedIn: true, isSuperAdmin: false, isLooker: true, user: { login: '__looker__', role: 'BOSS', name: 'Kuzatuvchi', companyKey: '' }, company: null });
-      return { success: true, isLooker: true };
-    }
     if (result.isSuperAdmin) {
       setState({ isLoggedIn: true, isSuperAdmin: true, isLooker: false, user: { login: username, role: 'SUPERADMIN', name: 'Super Admin', companyKey: '' }, company: null });
       return { success: true, isSuperAdmin: true };
