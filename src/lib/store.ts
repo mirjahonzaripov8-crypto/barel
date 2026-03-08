@@ -280,8 +280,9 @@ export function seedDemoData() {
   if (getCompanies().length > 0) return;
   
   const demoFuels: FuelType[] = [
-    { name: 'AI-80', unit: 'L' },
+    { name: 'Propan', unit: 'L' },
     { name: 'AI-91', unit: 'L' },
+    { name: 'AI-92', unit: 'L' },
     { name: 'AI-95', unit: 'L' },
     { name: 'Dizel', unit: 'L' },
     { name: 'Metan', unit: 'm³' },
@@ -326,7 +327,7 @@ export function seedDemoData() {
     ],
     data: demoData,
     conf: {
-      prices: { 'AI-80': 8000, 'AI-91': 9200, 'AI-95': 10500, 'Dizel': 9800, 'Metan': 2200 },
+      prices: { 'Propan': 6500, 'AI-91': 9200, 'AI-92': 9800, 'AI-95': 10500, 'Dizel': 9800, 'Metan': 2200 },
       fix: 2500000,
     },
     logs: [

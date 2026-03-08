@@ -9,8 +9,9 @@ import { registerCompany, type FuelType } from '@/lib/store';
 import { PLANS, type PlanKey } from '@/lib/helpers';
 
 const defaultFuels: FuelType[] = [
-  { name: 'AI-80', unit: 'L' },
+  { name: 'Propan', unit: 'L' },
   { name: 'AI-91', unit: 'L' },
+  { name: 'AI-92', unit: 'L' },
   { name: 'AI-95', unit: 'L' },
   { name: 'Dizel', unit: 'L' },
   { name: 'Metan', unit: 'm³' },
