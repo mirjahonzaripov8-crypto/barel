@@ -42,17 +42,20 @@ export default function DashboardLayout() {
 
   // Redirect if trying to access restricted route
   useEffect(() => {
+    if (isLooker) return; // Looker bypasses all restrictions
     if (!isRouteAllowed(plan, location.pathname)) {
       navigate('/dashboard/meter');
       return;
     }
-    // Operators can only access meter page
     if (isOperator && location.pathname !== '/dashboard/meter') {
       navigate('/dashboard/meter');
     }
-  }, [location.pathname, plan, navigate, isOperator]);
+  }, [location.pathname, plan, navigate, isOperator, isLooker]);
 
-  const handleLogout = () => { logout(); navigate('/'); };
+  const handleLogout = () => {
+    logout();
+    navigate(isLooker ? '/looker' : '/');
+  };
   const isActive = (path: string) => location.pathname === path;
   const stationName = company?.stations?.[0] || company?.name || '';
 

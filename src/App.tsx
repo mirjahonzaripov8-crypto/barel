@@ -80,6 +80,7 @@ const App = () => (
             </Route>
             <Route path="/admin" element={<AdminRoute><SuperAdminPage /></AdminRoute>} />
             <Route path="/admin/company/:key" element={<AdminRoute><CompanyViewPage /></AdminRoute>} />
+            <Route path="/looker" element={<LookerRoute><LookerPage /></LookerRoute>} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

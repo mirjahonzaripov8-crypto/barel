@@ -25,6 +25,8 @@ export default function LoginPage() {
       toast.success('Muvaffaqiyatli kirdingiz!');
       if (result.isSuperAdmin) {
         navigate('/admin');
+      } else if (result.isLooker) {
+        navigate('/looker');
       } else {
         navigate('/dashboard');
       }
