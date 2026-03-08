@@ -49,6 +49,7 @@ export default function ExpensesPage() {
               {categories.map(c => <option key={c} value={c}>{c}</option>)}
             </select>
           </div>
+          <Button onClick={exportPdf} variant="outline" className="gap-2"><FileDown className="h-4 w-4" />PDF yuklab olish</Button>
         </div>
 
         <div className="flex items-center gap-2 mb-4">

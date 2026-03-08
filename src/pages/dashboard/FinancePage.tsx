@@ -85,6 +85,7 @@ export default function FinancePage() {
         <div className="flex flex-wrap items-end gap-4 mb-6">
           <div><Label className="text-xs">Dan</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1 w-40" /></div>
           <div><Label className="text-xs">Gacha</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1 w-40" /></div>
+          <Button onClick={exportPdf} variant="outline" className="gap-2"><FileDown className="h-4 w-4" />PDF yuklab olish</Button>
         </div>
         <div className="grid sm:grid-cols-4 gap-4">
           <div className="bg-secondary/50 rounded-lg p-4">
