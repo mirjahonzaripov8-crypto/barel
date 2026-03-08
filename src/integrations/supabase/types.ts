@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      company_users: {
+        Row: {
+          company_key: string
+          company_name: string | null
+          created_at: string | null
+          id: string
+          login: string
+          name: string
+          password: string
+          role: string
+          updated_at: string | null
+        }
+        Insert: {
+          company_key: string
+          company_name?: string | null
+          created_at?: string | null
+          id?: string
+          login: string
+          name: string
+          password: string
+          role?: string
+          updated_at?: string | null
+        }
+        Update: {
+          company_key?: string
+          company_name?: string | null
+          created_at?: string | null
+          id?: string
+          login?: string
+          name?: string
+          password?: string
+          role?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       telegram_sessions: {
         Row: {
           chat_id: string
