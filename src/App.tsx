@@ -20,6 +20,7 @@ import SecurityPage from "./pages/dashboard/SecurityPage";
 import AIAssistantPage from "./pages/dashboard/AIAssistantPage";
 import TelegramPage from "./pages/dashboard/TelegramPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
+import CompanyViewPage from "./pages/CompanyViewPage";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();

@@ -1,92 +1,225 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { getCompanies, saveCompanies, getPayments, savePayments } from '@/lib/store';
-import { formatCurrency, formatDate } from '@/lib/helpers';
+import { getCompanies, saveCompanies, getPayments, savePayments, type Company, type Payment } from '@/lib/store';
+import { formatCurrency, formatDate, formatNumber, PLANS, type PlanKey } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle, Zap, Send } from 'lucide-react';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
+} from '@/components/ui/dialog';
+import {
+  Building2, CreditCard, MessageSquare, LogOut, Eye, Plus, Ban, CheckCircle,
+  Send, Home, ShieldCheck, Calendar, Users, Fuel, Lock, Unlock, X, FileText
+} from 'lucide-react';
 import { toast } from 'sonner';
 
-type Tab = 'home' | 'payments' | 'messages';
+type Tab = 'home' | 'companies' | 'payments' | 'messages';
+
+function getStatusLabel(status: string) {
+  switch (status) {
+    case 'trial': return 'Sinov';
+    case 'active': return 'Faol';
+    case 'expired': return 'Tugagan';
+    case 'suspended': return 'Bloklangan';
+    default: return status;
+  }
+}
+
+function getStatusColor(status: string) {
+  switch (status) {
+    case 'trial': return 'bg-warning/10 text-warning';
+    case 'active': return 'bg-success/10 text-success';
+    case 'expired': return 'bg-destructive/10 text-destructive';
+    case 'suspended': return 'bg-destructive/10 text-destructive';
+    default: return 'bg-muted text-muted-foreground';
+  }
+}
 
 export default function SuperAdminPage() {
   const { logout } = useAuth();
   const navigate = useNavigate();
   const [tab, setTab] = useState<Tab>('home');
   const [broadcastMsg, setBroadcastMsg] = useState('');
+  const [, setRefresh] = useState(0);
+
+  // Security modal
+  const [securityOpen, setSecurityOpen] = useState(false);
+  const [securityPw, setSecurityPw] = useState('');
+  const [securityError, setSecurityError] = useState('');
+  const [pendingAction, setPendingAction] = useState<(() => void) | null>(null);
+
+  // Receipt modal
+  const [receiptOpen, setReceiptOpen] = useState(false);
+  const [receiptData, setReceiptData] = useState<string | null>(null);
+  const [receiptInfo, setReceiptInfo] = useState('');
+
+  // Duration modal for payment approval
+  const [durationOpen, setDurationOpen] = useState(false);
+  const [durationMonths, setDurationMonths] = useState(1);
+  const [customDate, setCustomDate] = useState('');
+  const [useCustomDate, setUseCustomDate] = useState(false);
+  const [pendingPaymentId, setPendingPaymentId] = useState<string | null>(null);
 
   const companies = getCompanies();
   const payments = getPayments();
+  const pendingPayments = payments.filter(p => p.status === 'pending');
+  const activeCount = companies.filter(c => c.subscription.status === 'active' || c.subscription.status === 'trial').length;
+
+  const forceRefresh = () => setRefresh(r => r + 1);
+
+  const requireSecurity = useCallback((action: () => void) => {
+    setPendingAction(() => action);
+    setSecurityPw('');
+    setSecurityError('');
+    setSecurityOpen(true);
+  }, []);
+
+  const confirmSecurity = () => {
+    if (securityPw === 'admin2024') {
+      setSecurityOpen(false);
+      pendingAction?.();
+      setPendingAction(null);
+    } else {
+      setSecurityError('Parol xato!');
+    }
+  };
 
   const handleLogout = () => { logout(); navigate('/'); };
 
   const extendOneMonth = (key: string) => {
-    const cs = getCompanies();
-    const idx = cs.findIndex(c => c.key === key);
-    if (idx < 0) return;
-    const c = cs[idx];
-    const base = c.subscription.active_until ? new Date(c.subscription.active_until) : new Date();
-    base.setMonth(base.getMonth() + 1);
-    cs[idx] = { ...c, subscription: { ...c.subscription, status: 'active', active_until: base.toISOString() } };
-    saveCompanies(cs);
-    toast.success(`${c.name} — 1 oy uzaytirildi!`);
+    requireSecurity(() => {
+      const cs = getCompanies();
+      const idx = cs.findIndex(c => c.key === key);
+      if (idx < 0) return;
+      const c = cs[idx];
+      const base = c.subscription.active_until ? new Date(c.subscription.active_until) : new Date();
+      base.setMonth(base.getMonth() + 1);
+      cs[idx] = { ...c, subscription: { ...c.subscription, status: 'active', active_until: base.toISOString() } };
+      saveCompanies(cs);
+      toast.success(`${c.name} — 1 oy uzaytirildi!`);
+      forceRefresh();
+    });
   };
 
   const toggleSuspend = (key: string) => {
-    const cs = getCompanies();
-    const idx = cs.findIndex(c => c.key === key);
-    if (idx < 0) return;
-    const c = cs[idx];
-    const newStatus = c.subscription.status === 'suspended' ? 'active' : 'suspended';
-    cs[idx] = { ...c, subscription: { ...c.subscription, status: newStatus } };
-    saveCompanies(cs);
-    toast.success(`${c.name} — ${newStatus === 'suspended' ? 'Bloklandi' : 'Faollashtirildi'}`);
+    requireSecurity(() => {
+      const cs = getCompanies();
+      const idx = cs.findIndex(c => c.key === key);
+      if (idx < 0) return;
+      const c = cs[idx];
+      const newStatus = c.subscription.status === 'suspended' ? 'active' : 'suspended';
+      cs[idx] = { ...c, subscription: { ...c.subscription, status: newStatus } };
+      saveCompanies(cs);
+      toast.success(`${c.name} — ${newStatus === 'suspended' ? 'Bloklandi' : 'Faollashtirildi'}`);
+      forceRefresh();
+    });
   };
 
-  const approvePayment = (paymentId: string) => {
-    const ps = getPayments();
-    const idx = ps.findIndex(p => p.id === paymentId);
-    if (idx < 0) return;
-    ps[idx].status = 'approved';
-    const until = new Date();
-    until.setMonth(until.getMonth() + 1);
-    ps[idx].approved_until = until.toISOString();
-    savePayments(ps);
+  const openApprovalDuration = (paymentId: string) => {
+    setPendingPaymentId(paymentId);
+    setDurationMonths(1);
+    setCustomDate('');
+    setUseCustomDate(false);
+    setDurationOpen(true);
+  };
 
-    // Update company subscription
-    const cs = getCompanies();
-    const ci = cs.findIndex(c => c.key === ps[idx].companyKey);
-    if (ci >= 0) {
-      cs[ci].subscription = { ...cs[ci].subscription, status: 'active', active_until: until.toISOString() };
-      saveCompanies(cs);
+  const confirmApproval = () => {
+    if (!pendingPaymentId) return;
+    const pid = pendingPaymentId;
+    setDurationOpen(false);
+
+    requireSecurity(() => {
+      const ps = getPayments();
+      const idx = ps.findIndex(p => p.id === pid);
+      if (idx < 0) return;
+      ps[idx].status = 'approved';
+
+      let until: Date;
+      if (useCustomDate && customDate) {
+        until = new Date(customDate);
+      } else {
+        until = new Date();
+        until.setMonth(until.getMonth() + durationMonths);
+      }
+      ps[idx].approved_until = until.toISOString();
+      savePayments(ps);
+
+      const cs = getCompanies();
+      const ci = cs.findIndex(c => c.key === ps[idx].companyKey);
+      if (ci >= 0) {
+        cs[ci].subscription = { ...cs[ci].subscription, status: 'active', active_until: until.toISOString() };
+        saveCompanies(cs);
+      }
+      toast.success("To'lov tasdiqlandi!");
+      forceRefresh();
+    });
+  };
+
+  const viewReceipt = (payment: Payment) => {
+    if (payment.receipt_base64) {
+      setReceiptData(payment.receipt_base64);
+      setReceiptInfo(`Holati: ${payment.status} · Sana: ${formatDate(payment.payment_date)} · Summa: ${formatCurrency(payment.amount)}`);
+      setReceiptOpen(true);
+    } else {
+      toast.error("Chek yuklanmagan");
     }
-    toast.success("To'lov tasdiqlandi!");
+  };
+
+  const sendBroadcast = () => {
+    if (!broadcastMsg.trim()) {
+      toast.error("Xabar matnini kiriting.");
+      return;
+    }
+    requireSecurity(() => {
+      const notifs = JSON.parse(localStorage.getItem('notifications') || '[]');
+      notifs.push({
+        id: Date.now(),
+        sender: 'admin',
+        receiver: 'all',
+        message_text: broadcastMsg.trim(),
+        created_at: new Date().toISOString(),
+        read: false,
+      });
+      localStorage.setItem('notifications', JSON.stringify(notifs));
+      toast.success("Xabar barchaga yuborildi.");
+      setBroadcastMsg('');
+    });
+  };
+
+  const viewCompany = (key: string) => {
+    navigate(`/admin/company/${key}`);
   };
 
   const sideItems = [
-    { id: 'home' as Tab, icon: Building2, label: 'Korxonalar' },
-    { id: 'payments' as Tab, icon: CreditCard, label: "To'lovlar" },
+    { id: 'home' as Tab, icon: Home, label: 'Bosh sahifa' },
+    { id: 'companies' as Tab, icon: Building2, label: 'Korxonalar' },
+    { id: 'payments' as Tab, icon: CreditCard, label: "To'lovlar", badge: pendingPayments.length },
     { id: 'messages' as Tab, icon: MessageSquare, label: 'Xabarlar' },
   ];
 
-  const pendingPayments = payments.filter(p => p.status === 'pending');
-
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex bg-muted/30">
+      {/* Sidebar */}
       <aside className="w-60 bg-card border-r border-border flex flex-col shrink-0">
         <div className="h-16 flex items-center gap-2 px-5 border-b border-border">
-          <Zap className="h-6 w-6 text-primary" />
-          <span className="font-bold text-foreground text-sm">SUPER ADMIN</span>
+          <Fuel className="h-6 w-6 text-primary" />
+          <span className="font-extrabold text-primary text-lg tracking-tight">BAREL Admin</span>
         </div>
         <nav className="flex-1 py-3 px-3 space-y-0.5">
           {sideItems.map(item => (
             <button key={item.id} onClick={() => setTab(item.id)}
-              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${tab === item.id ? 'bg-primary text-primary-foreground' : 'text-foreground hover:bg-secondary'}`}>
-              <item.icon className="h-4 w-4" /> {item.label}
-              {item.id === 'payments' && pendingPayments.length > 0 && (
-                <span className="ml-auto bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center">{pendingPayments.length}</span>
-              )}
+              className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${
+                tab === item.id
+                  ? 'bg-primary text-primary-foreground shadow-md'
+                  : 'text-foreground hover:bg-accent'
+              }`}>
+              <item.icon className="h-4 w-4" />
+              {item.label}
+              {item.badge && item.badge > 0 ? (
+                <span className="ml-auto bg-destructive text-destructive-foreground text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">{item.badge}</span>
+              ) : null}
             </button>
           ))}
         </nav>
@@ -97,113 +230,309 @@ export default function SuperAdminPage() {
         </div>
       </aside>
 
-      <main className="flex-1 p-6 overflow-y-auto">
+      {/* Main content */}
+      <main className="flex-1 p-8 overflow-y-auto">
+        {/* HOME */}
         {tab === 'home' && (
           <div className="animate-fade-in">
-            <h1 className="text-2xl font-bold text-foreground mb-6">Korxonalar</h1>
-            <div className="grid sm:grid-cols-3 gap-4 mb-6">
-              <div className="bg-card border border-border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Jami korxonalar</p>
-                <p className="text-2xl font-bold text-foreground">{companies.length}</p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Faol obunalar</p>
-                <p className="text-2xl font-bold text-success">{companies.filter(c => c.subscription.status === 'active').length}</p>
-              </div>
-              <div className="bg-card border border-border rounded-lg p-4">
-                <p className="text-xs text-muted-foreground">Kutilayotgan to'lovlar</p>
-                <p className="text-2xl font-bold text-warning">{pendingPayments.length}</p>
-              </div>
+            <h1 className="text-2xl font-extrabold text-foreground mb-6">Bosh sahifa</h1>
+            <div className="grid sm:grid-cols-3 gap-5 mb-8">
+              <StatCard icon={Building2} label="Jami korxonalar" value={companies.length} />
+              <StatCard icon={CheckCircle} label="Faol obunalar" value={activeCount} color="text-success" />
+              <StatCard icon={CreditCard} label="Kutilayotgan to'lovlar" value={pendingPayments.length} color="text-warning" />
             </div>
-
-            <div className="bg-card border border-border rounded-lg p-4 overflow-x-auto">
-              <table className="w-full text-sm min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-border">
-                    {['Korxona', 'Yaratilgan', 'Tarif', 'Holat', 'Amal'].map(h => (
-                      <th key={h} className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {companies.map(c => (
-                    <tr key={c.key} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                      <td className="py-2 px-2 font-medium">{c.name}</td>
-                      <td className="py-2 px-2 text-muted-foreground text-xs">{formatDate(c.created_at)}</td>
-                      <td className="py-2 px-2"><span className="bg-secondary text-foreground text-xs px-2 py-0.5 rounded-md">{c.plan}</span></td>
-                      <td className="py-2 px-2">
-                        <span className={`text-xs px-2 py-0.5 rounded-md ${c.subscription.status === 'active' ? 'bg-success/10 text-success' : c.subscription.status === 'trial' ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'}`}>
-                          {c.subscription.status}
-                        </span>
-                      </td>
-                      <td className="py-2 px-2 flex gap-1">
-                        <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => extendOneMonth(c.key)}><Plus className="h-3 w-3 mr-1" /> +1 oy</Button>
-                        <Button variant={c.subscription.status === 'suspended' ? 'default' : 'destructive'} size="sm" className="h-7 text-xs" onClick={() => toggleSuspend(c.key)}>
-                          {c.subscription.status === 'suspended' ? <><CheckCircle className="h-3 w-3 mr-1" /> Faol</> : <><Ban className="h-3 w-3 mr-1" /> Blok</>}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            {/* Recent companies summary */}
+            <div className="bg-card border border-border rounded-xl p-5">
+              <h2 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+                <Building2 className="h-4 w-4 text-primary" /> Oxirgi korxonalar
+              </h2>
+              <div className="space-y-2">
+                {companies.slice(-5).reverse().map(c => (
+                  <div key={c.key} className="flex items-center justify-between py-2 px-3 rounded-lg hover:bg-accent/50 transition-colors">
+                    <div>
+                      <span className="font-medium text-sm text-foreground">{c.name}</span>
+                      <span className="text-xs text-muted-foreground ml-3">{PLANS[c.plan]?.name || c.plan}</span>
+                    </div>
+                    <span className={`text-xs px-2 py-0.5 rounded-md font-medium ${getStatusColor(c.subscription.status)}`}>
+                      {getStatusLabel(c.subscription.status)}
+                    </span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
+        {/* COMPANIES */}
+        {tab === 'companies' && (
+          <div className="animate-fade-in">
+            <h1 className="text-2xl font-extrabold text-foreground mb-6">Korxonalar</h1>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="overflow-x-auto max-h-[70vh]">
+                <table className="w-full text-sm min-w-[900px]">
+                  <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                    <tr>
+                      {['Korxona', "Ro'yxat", 'Tarif', 'Holat', 'Obuna tugashi', 'Ishchilar', 'Chek', 'Amallar'].map(h => (
+                        <th key={h} className="text-left py-3 px-4 text-muted-foreground font-semibold text-xs uppercase tracking-wider border-b border-border">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {companies.map(c => {
+                      const hasPendingReceipt = payments.some(p => p.companyKey === c.key && p.status === 'pending' && p.receipt_base64);
+                      return (
+                        <tr key={c.key} className="border-b border-border/50 hover:bg-accent/30 transition-colors group">
+                          <td className="py-3 px-4">
+                            <button onClick={() => viewCompany(c.key)} className="font-semibold text-primary hover:underline text-left">
+                              {c.name}
+                            </button>
+                          </td>
+                          <td className="py-3 px-4 text-muted-foreground text-xs">{formatDate(c.created_at)}</td>
+                          <td className="py-3 px-4">
+                            <span className="bg-secondary text-secondary-foreground text-xs px-2.5 py-1 rounded-md font-medium">
+                              {PLANS[c.plan]?.name || c.plan}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${getStatusColor(c.subscription.status)}`}>
+                              {getStatusLabel(c.subscription.status)}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-xs text-muted-foreground">
+                            {c.subscription.active_until ? formatDate(c.subscription.active_until) : c.subscription.trial_end_date ? formatDate(c.subscription.trial_end_date) : '-'}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <Users className="h-3 w-3" /> {c.users.length}
+                            </span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {hasPendingReceipt ? (
+                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => {
+                                const p = payments.find(p => p.companyKey === c.key && p.status === 'pending' && p.receipt_base64);
+                                if (p) viewReceipt(p);
+                              }}>
+                                <Eye className="h-3 w-3 mr-1" /> Ko'rish
+                              </Button>
+                            ) : <span className="text-xs text-muted-foreground">-</span>}
+                          </td>
+                          <td className="py-3 px-4">
+                            <div className="flex gap-1.5">
+                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => viewCompany(c.key)}>
+                                <Eye className="h-3 w-3 mr-1" /> Ko'rish
+                              </Button>
+                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => extendOneMonth(c.key)}>
+                                <Plus className="h-3 w-3 mr-1" /> +1 oy
+                              </Button>
+                              <Button
+                                variant={c.subscription.status === 'suspended' ? 'default' : 'destructive'}
+                                size="sm" className="h-7 text-xs"
+                                onClick={() => toggleSuspend(c.key)}
+                              >
+                                {c.subscription.status === 'suspended'
+                                  ? <><Unlock className="h-3 w-3 mr-1" /> Faol</>
+                                  : <><Lock className="h-3 w-3 mr-1" /> Blok</>
+                                }
+                              </Button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {companies.length === 0 && (
+                      <tr><td colSpan={8} className="py-12 text-center text-muted-foreground">Korxonalar yo'q</td></tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* PAYMENTS */}
         {tab === 'payments' && (
           <div className="animate-fade-in">
-            <h1 className="text-2xl font-bold text-foreground mb-6">To'lovlar</h1>
-            <div className="bg-card border border-border rounded-lg p-4 overflow-x-auto">
-              <table className="w-full text-sm min-w-[600px]">
-                <thead>
-                  <tr className="border-b border-border">
-                    {['Korxona', 'Summa', 'Sana', 'Holat', 'Amal'].map(h => (
-                      <th key={h} className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {payments.length === 0 ? (
-                    <tr><td colSpan={5} className="py-6 text-center text-muted-foreground">To'lovlar yo'q</td></tr>
-                  ) : payments.map(p => {
-                    const comp = companies.find(c => c.key === p.companyKey);
-                    return (
-                      <tr key={p.id} className="border-b border-border/50 hover:bg-secondary/30 transition-colors">
-                        <td className="py-2 px-2">{comp?.name || p.companyKey}</td>
-                        <td className="py-2 px-2 font-medium">{formatCurrency(p.amount)}</td>
-                        <td className="py-2 px-2 text-muted-foreground text-xs">{formatDate(p.payment_date)}</td>
-                        <td className="py-2 px-2">
-                          <span className={`text-xs px-2 py-0.5 rounded-md ${p.status === 'approved' ? 'bg-success/10 text-success' : p.status === 'pending' ? 'bg-warning/10 text-warning' : 'bg-destructive/10 text-destructive'}`}>{p.status}</span>
-                        </td>
-                        <td className="py-2 px-2">
-                          {p.status === 'pending' && (
-                            <Button size="sm" className="h-7 text-xs" onClick={() => approvePayment(p.id)}>
-                              <CheckCircle className="h-3 w-3 mr-1" /> Tasdiqlash
-                            </Button>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+            <h1 className="text-2xl font-extrabold text-foreground mb-6">To'lovlar</h1>
+            <div className="bg-card border border-border rounded-xl overflow-hidden">
+              <div className="overflow-x-auto max-h-[70vh]">
+                <table className="w-full text-sm min-w-[700px]">
+                  <thead className="sticky top-0 bg-muted/80 backdrop-blur-sm z-10">
+                    <tr>
+                      {['Korxona', 'Summa', 'Sana', 'Holat', 'Chek', 'Amal'].map(h => (
+                        <th key={h} className="text-left py-3 px-4 text-muted-foreground font-semibold text-xs uppercase tracking-wider border-b border-border">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {payments.length === 0 ? (
+                      <tr><td colSpan={6} className="py-12 text-center text-muted-foreground">To'lovlar yo'q</td></tr>
+                    ) : [...payments].reverse().map(p => {
+                      const comp = companies.find(c => c.key === p.companyKey);
+                      return (
+                        <tr key={p.id} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
+                          <td className="py-3 px-4 font-medium">{comp?.name || p.companyKey}</td>
+                          <td className="py-3 px-4 font-semibold">{formatCurrency(p.amount)}</td>
+                          <td className="py-3 px-4 text-muted-foreground text-xs">{formatDate(p.payment_date)}</td>
+                          <td className="py-3 px-4">
+                            <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${
+                              p.status === 'approved' ? 'bg-success/10 text-success' :
+                              p.status === 'pending' ? 'bg-warning/10 text-warning' :
+                              'bg-destructive/10 text-destructive'
+                            }`}>{p.status === 'approved' ? 'Tasdiqlangan' : p.status === 'pending' ? 'Kutilmoqda' : 'Rad etilgan'}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {p.receipt_base64 ? (
+                              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => viewReceipt(p)}>
+                                <FileText className="h-3 w-3 mr-1" /> Chek
+                              </Button>
+                            ) : <span className="text-xs text-muted-foreground">-</span>}
+                          </td>
+                          <td className="py-3 px-4">
+                            {p.status === 'pending' && (
+                              <Button size="sm" className="h-7 text-xs" onClick={() => openApprovalDuration(p.id)}>
+                                <CheckCircle className="h-3 w-3 mr-1" /> Tasdiqlash
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
 
+        {/* MESSAGES */}
         {tab === 'messages' && (
           <div className="animate-fade-in">
-            <h1 className="text-2xl font-bold text-foreground mb-6">Xabarlar</h1>
-            <div className="bg-card border border-border rounded-lg p-4 md:p-6 max-w-lg">
-              <h3 className="font-semibold text-foreground mb-3">Barchaga xabar yuborish</h3>
-              <textarea value={broadcastMsg} onChange={e => setBroadcastMsg(e.target.value)} placeholder="Xabar matnini kiriting..." className="w-full h-28 rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none mb-3" />
-              <Button onClick={() => { if (broadcastMsg.trim()) { toast.success("Xabar yuborildi!"); setBroadcastMsg(''); } }} className="w-full">
-                <Send className="h-4 w-4 mr-1" /> Barchaga yuborish
+            <h1 className="text-2xl font-extrabold text-foreground mb-6">Ommaviy xabar yuborish</h1>
+            <div className="bg-card border border-border rounded-xl p-6 max-w-lg">
+              <p className="text-sm text-muted-foreground mb-4">Barcha foydalanuvchilarga xabar yuboriladi.</p>
+              <Textarea
+                value={broadcastMsg}
+                onChange={e => setBroadcastMsg(e.target.value)}
+                placeholder="Barcha foydalanuvchilarga yuboriladigan xabar..."
+                rows={4}
+                className="mb-4"
+              />
+              <Button onClick={sendBroadcast} className="w-full">
+                <Send className="h-4 w-4 mr-2" /> Barchaga yuborish
               </Button>
             </div>
           </div>
         )}
       </main>
+
+      {/* Security Confirmation Dialog */}
+      <Dialog open={securityOpen} onOpenChange={setSecurityOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ShieldCheck className="h-5 w-5 text-primary" /> Harakatni tasdiqlash
+            </DialogTitle>
+            <DialogDescription>
+              Harakatni amalga oshirish uchun Superadmin parolini kiriting.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <Input
+              type="password"
+              placeholder="Superadmin paroli"
+              value={securityPw}
+              onChange={e => { setSecurityPw(e.target.value); setSecurityError(''); }}
+              onKeyDown={e => e.key === 'Enter' && confirmSecurity()}
+              autoFocus
+            />
+            {securityError && <p className="text-destructive text-sm font-medium">{securityError}</p>}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setSecurityOpen(false)}>Orqaga</Button>
+            <Button onClick={confirmSecurity}>Tasdiqlash</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Receipt View Dialog */}
+      <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chek ko'rish</DialogTitle>
+          </DialogHeader>
+          {receiptData ? (
+            <div className="space-y-3">
+              {receiptData.startsWith('data:image') ? (
+                <img src={receiptData} alt="Chek" className="w-full rounded-lg border border-border" />
+              ) : (
+                <p className="text-sm text-muted-foreground">Chek formatini ko'rsatib bo'lmadi</p>
+              )}
+              <p className="text-xs text-muted-foreground">{receiptInfo}</p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground py-6 text-center">Chek yuklanmagan</p>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Duration Selection Dialog */}
+      <Dialog open={durationOpen} onOpenChange={setDurationOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Obuna muddatini tanlang</DialogTitle>
+            <DialogDescription>To'lovni tasdiqlash uchun muddat belgilang.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { months: 1, label: '+1 Oy' },
+                { months: 3, label: '+3 Oy' },
+                { months: 6, label: '+6 Oy' },
+                { months: 12, label: '+1 Yil' },
+              ].map(opt => (
+                <button
+                  key={opt.months}
+                  onClick={() => { setDurationMonths(opt.months); setUseCustomDate(false); }}
+                  className={`py-2.5 px-4 rounded-lg border text-sm font-medium transition-all ${
+                    !useCustomDate && durationMonths === opt.months
+                      ? 'bg-primary text-primary-foreground border-primary shadow-md'
+                      : 'border-border text-foreground hover:bg-accent'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">yoki maxsus sana:</span>
+              <Input
+                type="date"
+                value={customDate}
+                onChange={e => { setCustomDate(e.target.value); setUseCustomDate(true); }}
+                className="flex-1"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setDurationOpen(false)}>Bekor</Button>
+            <Button onClick={confirmApproval}>Tasdiqlash</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+function StatCard({ icon: Icon, label, value, color }: { icon: any; label: string; value: number; color?: string }) {
+  return (
+    <div className="bg-card border border-border rounded-xl p-5 hover:-translate-y-1 hover:shadow-lg transition-all duration-300 group">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
+          <Icon className="h-5 w-5 text-primary" />
+        </div>
+      </div>
+      <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">{label}</p>
+      <p className={`text-3xl font-extrabold mt-1 ${color || 'text-foreground'}`}>{value}</p>
     </div>
   );
 }
