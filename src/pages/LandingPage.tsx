@@ -117,7 +117,7 @@ export default function LandingPage() {
                   <span className="text-muted-foreground text-sm ml-1">so'm/oy</span>
                 </div>
                 <ul className="space-y-2 mb-6">
-                  {plan.features.map((f) => (
+                  {getPlanFeaturesWithCustom(key).map((f) => (
                     <li key={f} className="flex items-center gap-2 text-sm text-foreground">
                       <Check className="h-4 w-4 text-success flex-shrink-0" /> {f}
                     </li>
