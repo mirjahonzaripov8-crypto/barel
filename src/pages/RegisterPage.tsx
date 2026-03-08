@@ -8,13 +8,13 @@ import { toast } from 'sonner';
 import { registerCompany, type FuelType } from '@/lib/store';
 import { PLANS, type PlanKey } from '@/lib/helpers';
 
-const defaultFuels: FuelType[] = [
-  { name: 'Propan', unit: 'L' },
-  { name: 'AI-91', unit: 'L' },
-  { name: 'AI-92', unit: 'L' },
-  { name: 'AI-95', unit: 'L' },
-  { name: 'Dizel', unit: 'L' },
-  { name: 'Metan', unit: 'm³' },
+const defaultFuels: (FuelType & { selected?: boolean })[] = [
+  { name: 'Propan', unit: 'L', meterCount: 1 },
+  { name: 'AI-91', unit: 'L', meterCount: 1 },
+  { name: 'AI-92', unit: 'L', meterCount: 1 },
+  { name: 'AI-95', unit: 'L', meterCount: 1 },
+  { name: 'Dizel', unit: 'L', meterCount: 1 },
+  { name: 'Metan', unit: 'm³', meterCount: 1 },
 ];
 
 export default function RegisterPage() {
