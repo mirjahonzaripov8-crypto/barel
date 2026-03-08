@@ -206,6 +206,9 @@ Deno.serve(async (req) => {
 
         // /kiritish - start data entry flow
         if (text === '/kiritish' && (state === 'AUTHENTICATED' || state === 'MENU')) {
+          // Default fuel types
+          const fuelTypes = ['Propan', 'AI-91', 'AI-92', 'AI-95', 'Dizel', 'Metan'];
+
           await upsertSession(supabase, chatId, {
             state: 'AWAITING_FUEL_TYPE',
             data: {
@@ -215,23 +218,31 @@ Deno.serve(async (req) => {
               expenses: [],
               terminal: 0,
               date: new Date().toISOString().split('T')[0],
+              availableFuels: fuelTypes,
             },
           });
+
+          // Build inline keyboard with fuel type buttons
+          const alreadyAdded = (sessionData.fuels || []).map((f: any) => f.type);
+          const buttons = fuelTypes
+            .filter(ft => !alreadyAdded.includes(ft))
+            .map(ft => [{ text: `⛽ ${ft}`, callback_data: `fuel_${ft}` }]);
+          buttons.push([{ text: '✅ Tayyor', callback_data: 'fuel_done' }]);
+
           await sendMessage(botToken, chatId,
-            `⛽ Yoqilg'i turini kiriting (masalan: Propan, AI-92, Dizel, Metan):\n\n` +
-            `Yoki "tayyor" deb yozing agar barcha yoqilg'ilarni kiritib bo'lsangiz.`
+            `⛽ <b>Yoqilg'i turini tanlang:</b>`,
+            { inline_keyboard: buttons }
           );
           return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
         }
 
-        // Fuel type entry
+        // Fuel type entry (text fallback or inline button)
         if (state === 'AWAITING_FUEL_TYPE') {
           if (text.toLowerCase() === 'tayyor') {
             if (!sessionData.fuels || sessionData.fuels.length === 0) {
-              await sendMessage(botToken, chatId, '❌ Kamida bitta yoqilg\'i kiriting!');
+              await sendMessage(botToken, chatId, '❌ Kamida bitta yoqilg\'i tanlang!');
               return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
             }
-            // Move to terminal
             await upsertSession(supabase, chatId, {
               state: 'AWAITING_TERMINAL',
               data: { ...sessionData, step: 'TERMINAL' },
@@ -240,6 +251,7 @@ Deno.serve(async (req) => {
             return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
           }
 
+          // Text-based fuel selection fallback
           await upsertSession(supabase, chatId, {
             state: 'AWAITING_END_VALUE',
             data: { ...sessionData, currentFuel: text, step: 'END_VALUE' },
