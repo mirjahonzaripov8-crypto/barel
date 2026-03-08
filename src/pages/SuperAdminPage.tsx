@@ -93,6 +93,8 @@ export default function SuperAdminPage() {
   const [newFeaturePlan, setNewFeaturePlan] = useState<'START' | 'STANDART' | 'PREMIUM'>('STANDART');
   const [editingFeature, setEditingFeature] = useState<CustomFeature | null>(null);
   const [editPrompt, setEditPrompt] = useState('');
+  const [demoDialogOpen, setDemoDialogOpen] = useState(false);
+  const [demoFeatureTitle, setDemoFeatureTitle] = useState('');
 
   const companies = getCompanies();
   const customFeatures = getCustomFeatures();
