@@ -4,36 +4,192 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Zap, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { Zap, ArrowLeft, Eye, EyeOff, ScanFace, ShieldCheck } from 'lucide-react';
 import { toast } from 'sonner';
+import {
+  isWebAuthnSupported,
+  registerBiometric,
+  verifyBiometric,
+  hasBiometricRegistered,
+  getLoginKeyForCredentials,
+} from '@/lib/biometric';
+
+type BiometricStep = 'none' | 'verify' | 'register';
 
 export default function LoginPage() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [showPw, setShowPw] = useState(false);
+  const [biometricStep, setBiometricStep] = useState<BiometricStep>('none');
+  const [pendingResult, setPendingResult] = useState<any>(null);
+  const [biometricLoading, setBiometricLoading] = useState(false);
   const { login: doLogin } = useAuth();
   const navigate = useNavigate();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const proceedAfterLogin = (result: any) => {
+    toast.success('Muvaffaqiyatli kirdingiz!');
+    if (result.isSuperAdmin) navigate('/admin');
+    else if (result.isLooker) navigate('/looker');
+    else navigate('/dashboard');
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!login.trim() || !password.trim()) {
       toast.error('Login va parolni kiriting!');
       return;
     }
+
     const result = doLogin(login.trim(), password.trim());
-    if (result.success) {
-      toast.success('Muvaffaqiyatli kirdingiz!');
-      if (result.isSuperAdmin) {
-        navigate('/admin');
-      } else if (result.isLooker) {
-        navigate('/looker');
-      } else {
-        navigate('/dashboard');
-      }
-    } else {
+    if (!result.success) {
       toast.error(result.error || 'Xatolik!');
+      return;
+    }
+
+    // Check if this is a special login requiring biometric
+    const loginKey = getLoginKeyForCredentials(login.trim());
+    if (loginKey && isWebAuthnSupported()) {
+      setPendingResult(result);
+      if (hasBiometricRegistered(loginKey)) {
+        setBiometricStep('verify');
+      } else {
+        setBiometricStep('register');
+      }
+      return;
+    }
+
+    // Normal login - no biometric needed
+    proceedAfterLogin(result);
+  };
+
+  const handleBiometricVerify = async () => {
+    const loginKey = getLoginKeyForCredentials(login.trim());
+    if (!loginKey) return;
+
+    setBiometricLoading(true);
+    try {
+      const verified = await verifyBiometric(loginKey);
+      if (verified) {
+        proceedAfterLogin(pendingResult);
+      } else {
+        toast.error("Yuzni tanib bo'lmadi! Kirish rad etildi.");
+        setBiometricStep('none');
+        setPendingResult(null);
+      }
+    } catch {
+      toast.error("Biometrik tekshirish xatosi!");
+      setBiometricStep('none');
+      setPendingResult(null);
+    } finally {
+      setBiometricLoading(false);
     }
   };
+
+  const handleBiometricRegister = async () => {
+    const loginKey = getLoginKeyForCredentials(login.trim());
+    if (!loginKey) return;
+
+    setBiometricLoading(true);
+    try {
+      const registered = await registerBiometric(loginKey);
+      if (registered) {
+        toast.success("Face ID / biometrik muvaffaqiyatli ro'yxatdan o'tdi!");
+        proceedAfterLogin(pendingResult);
+      } else {
+        toast.error("Biometrik ro'yxatdan o'tkazib bo'lmadi.");
+        // Still allow login this first time
+        proceedAfterLogin(pendingResult);
+      }
+    } catch {
+      toast.error("Biometrik xatosi. Keyingi safar sozlanadi.");
+      proceedAfterLogin(pendingResult);
+    } finally {
+      setBiometricLoading(false);
+    }
+  };
+
+  const handleBiometricSkipCancel = () => {
+    toast.error("Kirish bekor qilindi.");
+    setBiometricStep('none');
+    setPendingResult(null);
+  };
+
+  // Biometric verification screen
+  if (biometricStep === 'verify') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-secondary/60 to-background p-4">
+        <div className="animate-scale-in w-full max-w-sm">
+          <div className="bg-card border border-border rounded-lg shadow-lg p-8 text-center">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+              <ScanFace className="h-10 w-10 text-primary" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Face ID talab qilinadi</h2>
+            <p className="text-sm text-muted-foreground mb-6">
+              Davom etish uchun yuzingizni tasdiqlang
+            </p>
+            <div className="space-y-3">
+              <Button
+                className="w-full h-12 text-base"
+                onClick={handleBiometricVerify}
+                disabled={biometricLoading}
+              >
+                <ScanFace className="h-5 w-5 mr-2" />
+                {biometricLoading ? 'Tekshirilmoqda...' : 'Yuzni tasdiqlash'}
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-destructive"
+                onClick={handleBiometricSkipCancel}
+                disabled={biometricLoading}
+              >
+                Bekor qilish
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Biometric registration screen (first time)
+  if (biometricStep === 'register') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-secondary/60 to-background p-4">
+        <div className="animate-scale-in w-full max-w-sm">
+          <div className="bg-card border border-border rounded-lg shadow-lg p-8 text-center">
+            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/10 flex items-center justify-center">
+              <ShieldCheck className="h-10 w-10 text-primary" />
+            </div>
+            <h2 className="text-xl font-bold text-foreground mb-2">Face ID sozlash</h2>
+            <p className="text-sm text-muted-foreground mb-2">
+              Xavfsizlik uchun Face ID / biometrik ro'yxatdan o'tkaziladi.
+            </p>
+            <p className="text-xs text-muted-foreground mb-6">
+              Keyingi kirishda yuzingiz talab qilinadi.
+            </p>
+            <div className="space-y-3">
+              <Button
+                className="w-full h-12 text-base"
+                onClick={handleBiometricRegister}
+                disabled={biometricLoading}
+              >
+                <ScanFace className="h-5 w-5 mr-2" />
+                {biometricLoading ? 'Sozlanmoqda...' : "Face ID ni sozlash"}
+              </Button>
+              <Button
+                variant="ghost"
+                className="w-full text-destructive"
+                onClick={handleBiometricSkipCancel}
+                disabled={biometricLoading}
+              >
+                Bekor qilish
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-secondary/60 to-background p-4">
