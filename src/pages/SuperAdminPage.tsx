@@ -486,7 +486,7 @@ export default function SuperAdminPage() {
                         <tr key={p.id} className="border-b border-border/50 hover:bg-accent/30 transition-colors">
                           <td className="py-3 px-4 font-medium">{p.company_name || comp?.name || p.company_key}</td>
                           <td className="py-3 px-4 font-semibold">{formatCurrency(p.amount)}</td>
-                          <td className="py-3 px-4 text-muted-foreground text-xs">{formatDate(p.payment_date)}</td>
+                          <td className="py-3 px-4 text-muted-foreground text-xs">{formatDate(p.payment_date || p.created_at)}</td>
                           <td className="py-3 px-4">
                             <span className={`text-xs px-2.5 py-1 rounded-md font-medium ${
                               p.status === 'approved' ? 'bg-success/10 text-success' :
