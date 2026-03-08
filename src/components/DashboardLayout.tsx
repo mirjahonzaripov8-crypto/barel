@@ -2,11 +2,12 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send
+  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send, Sparkles
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isRouteAllowed, type PlanKey } from '@/lib/helpers';
+import { getActiveFeaturesByPlan, getTestingFeaturesByPlan } from '@/lib/store';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
 
 const allNavItems = [
