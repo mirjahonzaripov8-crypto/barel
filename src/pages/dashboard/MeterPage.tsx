@@ -70,18 +70,14 @@ export default function MeterPage() {
 
   if (!company) return null;
 
-  // Sotilgan = Boshlang'ich - Oxirgi yangi + Prixod
-  // (Boshlang'ich katta, yoqilg'i sotilgandan keyin Oxirgi kichrayadi)
+  // Sotilgan = Oxirgi - Boshlang'ich + Prixod
+  // Hisoblagich o'sib boradi, Oxirgi > Boshlang'ich
   const updateFuel = (i: number, key: string, val: number) => {
     const f = [...fuels];
     (f[i] as any)[key] = val;
 
     if (key === 'end' || key === 'start' || key === 'prixod') {
-      const start = f[i].start;
-      const end = f[i].end;
-      const prixod = f[i].prixod;
-      // Sotilgan = start - end + prixod
-      f[i].sold = Math.max(0, start - end + prixod);
+      f[i].sold = Math.max(0, f[i].end - f[i].start + f[i].prixod);
     }
     setFuels(f);
   };
