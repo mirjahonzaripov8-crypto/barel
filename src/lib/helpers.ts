@@ -93,7 +93,7 @@ export const PLANS = {
   PREMIUM: { 
     name: 'Premium', 
     badge: '🥇',
-    price: 800000, 
+    price: 699999, 
     maxLogins: 8,
     description: 'Eng yuqori daraja - to\'liq nazorat va ustuvor yordam',
     features: [
