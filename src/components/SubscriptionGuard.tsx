@@ -96,7 +96,7 @@ export default function SubscriptionGuard({ children }: { children: React.ReactN
     const interval = setInterval(sendTelegramReminder, 5 * 60 * 60 * 1000);
 
     return () => clearInterval(interval);
-  }, [company, user, getExpiryInfo, card, isLooker]);
+  }, [company, user, getExpiryInfo, card]);
 
   // Looker bypasses subscription checks entirely
   if (isLooker) return <>{children}</>;
