@@ -94,6 +94,8 @@ export default function SuperAdminPage() {
   const [editingFeature, setEditingFeature] = useState<CustomFeature | null>(null);
   const [editPrompt, setEditPrompt] = useState('');
 
+  const companies = getCompanies();
+  const customFeatures = getCustomFeatures();
   const [payments, setPayments] = useState<any[]>([]);
   const featureRequests = getFeatureRequests();
   const pendingPayments = payments.filter((p: any) => p.status === 'pending');
