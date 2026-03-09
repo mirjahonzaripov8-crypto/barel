@@ -204,8 +204,20 @@ export default function DashboardLayout() {
               <Menu className="h-5 w-5" />
             </button>
             <h2 className="text-sm font-semibold text-foreground truncate">{stationName}</h2>
+            {company && company.stations.length > 1 && (
+              <select
+                value={currentStation}
+                onChange={e => handleStationChange(Number(e.target.value))}
+                className="text-xs bg-secondary border border-border rounded-md px-2 py-1 text-foreground"
+              >
+                {company.stations.map((s, i) => (
+                  <option key={i} value={i}>{s}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            <ReminderNotifications />
             <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : '🔧 Operator'}</span>
             <span className={cn("text-xs px-2 py-1 rounded-md font-medium", getPlanColor())}>
               {plan === 'PREMIUM' && <Crown className="h-3 w-3 inline mr-1" />}
