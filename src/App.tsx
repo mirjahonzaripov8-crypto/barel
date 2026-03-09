@@ -21,6 +21,8 @@ import SecurityPage from "./pages/dashboard/SecurityPage";
 import AIAssistantPage from "./pages/dashboard/AIAssistantPage";
 import TelegramPage from "./pages/dashboard/TelegramPage";
 import CustomFeaturePage from "./pages/dashboard/CustomFeaturePage";
+import SafePage from "./pages/dashboard/SafePage";
+import RemindersPage from "./pages/dashboard/RemindersPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import CompanyViewPage from "./pages/CompanyViewPage";
 
