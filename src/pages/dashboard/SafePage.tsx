@@ -71,13 +71,15 @@ export default function SafePage() {
       id: `safe_${Date.now()}`,
       type: 'in',
       amount: val,
+      reason: reason.trim() || undefined,
+      personName: personName.trim() || undefined,
       date: new Date().toISOString(),
       operator: user!.name,
     };
     const updated = [...transactions, tx];
     setTransactions(updated);
     saveSafeTransactions(company!.key, updated);
-    setAmount('');
+    setAmount(''); setReason(''); setPersonName('');
     setAddOpen(false);
     toast.success(`${formatCurrency(val)} seyfga qo'shildi`);
   }
