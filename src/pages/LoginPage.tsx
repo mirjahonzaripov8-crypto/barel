@@ -26,14 +26,44 @@ export default function LoginPage() {
   const [biometricStep, setBiometricStep] = useState<BiometricStep>('none');
   const [pendingResult, setPendingResult] = useState<any>(null);
   const [biometricLoading, setBiometricLoading] = useState(false);
+  const [stationPickerData, setStationPickerData] = useState<{ stations: string[]; result: any } | null>(null);
   const { login: doLogin } = useAuth();
   const navigate = useNavigate();
 
   const proceedAfterLogin = (result: any) => {
+    if (result.isSuperAdmin) {
+      toast.success('Muvaffaqiyatli kirdingiz!');
+      navigate('/admin');
+      return;
+    }
+    // Check if company has multiple stations
+    if (result.companyKey) {
+      const company = getCompanyByKey(result.companyKey);
+      if (company && company.stations.length > 1) {
+        setStationPickerData({ stations: company.stations, result });
+        return;
+      }
+    }
+    setCurrentStation(0);
     toast.success('Muvaffaqiyatli kirdingiz!');
-    if (result.isSuperAdmin) navigate('/admin');
-    else navigate('/dashboard');
+    navigate('/dashboard');
   };
+
+  const handleStationSelected = (index: number) => {
+    setCurrentStation(index);
+    toast.success('Muvaffaqiyatli kirdingiz!');
+    navigate('/dashboard');
+  };
+
+  // Station picker screen
+  if (stationPickerData) {
+    return (
+      <StationPicker
+        stations={stationPickerData.stations}
+        onSelect={handleStationSelected}
+      />
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -199,9 +199,9 @@ export default function SafePage() {
                       {new Date(tx.date).toLocaleDateString('uz-UZ')} {new Date(tx.date).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  {tx.type === 'out' && (
+                  {(tx.personName || tx.reason) && (
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {tx.personName} — {tx.reason}
+                      {tx.personName}{tx.personName && tx.reason ? ' — ' : ''}{tx.reason}
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">{tx.operator}</p>
