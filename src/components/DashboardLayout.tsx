@@ -7,8 +7,9 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isRouteAllowed, type PlanKey } from '@/lib/helpers';
-import { getActiveFeaturesByPlan, getTestingFeaturesByPlan } from '@/lib/store';
+import { getActiveFeaturesByPlan, getTestingFeaturesByPlan, getCurrentStation, setCurrentStation } from '@/lib/store';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
+import ReminderNotifications from '@/components/ReminderNotifications';
 
 const allNavItems = [
   { path: '/dashboard', icon: Home, label: 'Bosh sahifa' },
