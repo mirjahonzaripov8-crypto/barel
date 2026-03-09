@@ -2,13 +2,14 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send, Sparkles
+  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send, Sparkles, Vault, Bell
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { isRouteAllowed, type PlanKey } from '@/lib/helpers';
-import { getActiveFeaturesByPlan, getTestingFeaturesByPlan } from '@/lib/store';
+import { getActiveFeaturesByPlan, getTestingFeaturesByPlan, getCurrentStation, setCurrentStation } from '@/lib/store';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
+import ReminderNotifications from '@/components/ReminderNotifications';
 
 const allNavItems = [
   { path: '/dashboard', icon: Home, label: 'Bosh sahifa' },
@@ -20,6 +21,8 @@ const allNavItems = [
   { path: '/dashboard/plomba', icon: Lock, label: 'Plomba', minPlan: 'PRO' },
   { path: '/dashboard/referrals', icon: Gift, label: 'Referallar', minPlan: 'PREMIUM' },
   { path: '/dashboard/telegram', icon: Send, label: 'Telegram', minPlan: 'STANDART' },
+  { path: '/dashboard/safe', icon: Vault, label: 'Seyf', minPlan: 'STANDART' },
+  { path: '/dashboard/reminders', icon: Bell, label: 'Eslatmalar', minPlan: 'STANDART' },
   { path: '/dashboard/security', icon: Shield, label: 'Xavfsizlik' },
   { path: '/dashboard/ai', icon: Bot, label: 'AI yordamchi', minPlan: 'PREMIUM' },
 ];
@@ -71,7 +74,13 @@ export default function DashboardLayout() {
     navigate('/');
   };
   const isActive = (path: string) => location.pathname === path;
-  const stationName = company?.stations?.[0] || company?.name || '';
+  const currentStation = getCurrentStation();
+  const stationName = company?.stations?.[currentStation] || company?.stations?.[0] || company?.name || '';
+
+  const handleStationChange = (idx: number) => {
+    setCurrentStation(idx);
+    window.location.reload();
+  };
 
   const getPlanColor = () => {
     switch (plan) {
@@ -195,8 +204,20 @@ export default function DashboardLayout() {
               <Menu className="h-5 w-5" />
             </button>
             <h2 className="text-sm font-semibold text-foreground truncate">{stationName}</h2>
+            {company && company.stations.length > 1 && (
+              <select
+                value={currentStation}
+                onChange={e => handleStationChange(Number(e.target.value))}
+                className="text-xs bg-secondary border border-border rounded-md px-2 py-1 text-foreground"
+              >
+                {company.stations.map((s, i) => (
+                  <option key={i} value={i}>{s}</option>
+                ))}
+              </select>
+            )}
           </div>
           <div className="flex items-center gap-2">
+            <ReminderNotifications />
             <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : '🔧 Operator'}</span>
             <span className={cn("text-xs px-2 py-1 rounded-md font-medium", getPlanColor())}>
               {plan === 'PREMIUM' && <Crown className="h-3 w-3 inline mr-1" />}

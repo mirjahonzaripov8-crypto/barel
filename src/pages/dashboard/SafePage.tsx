@@ -71,13 +71,15 @@ export default function SafePage() {
       id: `safe_${Date.now()}`,
       type: 'in',
       amount: val,
+      reason: reason.trim() || undefined,
+      personName: personName.trim() || undefined,
       date: new Date().toISOString(),
       operator: user!.name,
     };
     const updated = [...transactions, tx];
     setTransactions(updated);
     saveSafeTransactions(company!.key, updated);
-    setAmount('');
+    setAmount(''); setReason(''); setPersonName('');
     setAddOpen(false);
     toast.success(`${formatCurrency(val)} seyfga qo'shildi`);
   }
@@ -127,7 +129,7 @@ export default function SafePage() {
           {formatCurrency(balance)}
         </p>
         <div className="flex gap-3 mt-4">
-          <Button onClick={() => { setAmount(''); setAddOpen(true); }} className="gap-2">
+          <Button onClick={() => { setAmount(''); setReason(''); setPersonName(''); setAddOpen(true); }} className="gap-2">
             <Plus className="h-4 w-4" /> Pul qo'shish
           </Button>
           <Button variant="outline" onClick={() => { setAmount(''); setReason(''); setPersonName(''); setWithdrawOpen(true); }} className="gap-2">
@@ -197,9 +199,9 @@ export default function SafePage() {
                       {new Date(tx.date).toLocaleDateString('uz-UZ')} {new Date(tx.date).toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                   </div>
-                  {tx.type === 'out' && (
+                  {(tx.personName || tx.reason) && (
                     <p className="text-xs text-muted-foreground mt-0.5">
-                      {tx.personName} — {tx.reason}
+                      {tx.personName}{tx.personName && tx.reason ? ' — ' : ''}{tx.reason}
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">{tx.operator}</p>
@@ -224,6 +226,22 @@ export default function SafePage() {
                 placeholder="Summani kiriting..."
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Kim kiritmoqda (ism)</Label>
+              <Input
+                placeholder="Ismi..."
+                value={personName}
+                onChange={e => setPersonName(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Nima uchun</Label>
+              <Input
+                placeholder="Masalan: kunlik tushum"
+                value={reason}
+                onChange={e => setReason(e.target.value)}
               />
             </div>
           </div>

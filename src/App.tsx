@@ -21,6 +21,8 @@ import SecurityPage from "./pages/dashboard/SecurityPage";
 import AIAssistantPage from "./pages/dashboard/AIAssistantPage";
 import TelegramPage from "./pages/dashboard/TelegramPage";
 import CustomFeaturePage from "./pages/dashboard/CustomFeaturePage";
+import SafePage from "./pages/dashboard/SafePage";
+import RemindersPage from "./pages/dashboard/RemindersPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import CompanyViewPage from "./pages/CompanyViewPage";
 
@@ -72,6 +74,8 @@ const App: React.FC = () => (
               <Route path="security" element={<SecurityPage />} />
               <Route path="ai" element={<AIAssistantPage />} />
               <Route path="telegram" element={<TelegramPage />} />
+              <Route path="safe" element={<SafePage />} />
+              <Route path="reminders" element={<RemindersPage />} />
               <Route path="feature/:featureId" element={<CustomFeaturePage />} />
             </Route>
             <Route path="/admin" element={<AdminRoute><SuperAdminPage /></AdminRoute>} />
