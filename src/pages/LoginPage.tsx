@@ -14,6 +14,8 @@ import {
   getLoginKeyForCredentials,
   isInIframe,
 } from '@/lib/biometric';
+import { getCompanyByKey, setCurrentStation } from '@/lib/store';
+import StationPicker from '@/components/StationPicker';
 
 type BiometricStep = 'none' | 'verify' | 'register';
 
