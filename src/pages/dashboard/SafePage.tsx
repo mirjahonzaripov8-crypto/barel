@@ -226,6 +226,22 @@ export default function SafePage() {
                 onChange={e => setAmount(e.target.value)}
               />
             </div>
+            <div>
+              <Label>Kim kiritmoqda (ism)</Label>
+              <Input
+                placeholder="Ismi..."
+                value={personName}
+                onChange={e => setPersonName(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label>Nima uchun</Label>
+              <Input
+                placeholder="Masalan: kunlik tushum"
+                value={reason}
+                onChange={e => setReason(e.target.value)}
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddOpen(false)}>Bekor qilish</Button>
