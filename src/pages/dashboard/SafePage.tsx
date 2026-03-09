@@ -129,7 +129,7 @@ export default function SafePage() {
           {formatCurrency(balance)}
         </p>
         <div className="flex gap-3 mt-4">
-          <Button onClick={() => { setAmount(''); setAddOpen(true); }} className="gap-2">
+          <Button onClick={() => { setAmount(''); setReason(''); setPersonName(''); setAddOpen(true); }} className="gap-2">
             <Plus className="h-4 w-4" /> Pul qo'shish
           </Button>
           <Button variant="outline" onClick={() => { setAmount(''); setReason(''); setPersonName(''); setWithdrawOpen(true); }} className="gap-2">
