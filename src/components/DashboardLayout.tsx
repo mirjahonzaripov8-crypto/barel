@@ -74,7 +74,13 @@ export default function DashboardLayout() {
     navigate('/');
   };
   const isActive = (path: string) => location.pathname === path;
-  const stationName = company?.stations?.[0] || company?.name || '';
+  const currentStation = getCurrentStation();
+  const stationName = company?.stations?.[currentStation] || company?.stations?.[0] || company?.name || '';
+
+  const handleStationChange = (idx: number) => {
+    setCurrentStation(idx);
+    window.location.reload();
+  };
 
   const getPlanColor = () => {
     switch (plan) {
