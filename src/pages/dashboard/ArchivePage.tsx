@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Edit, FileDown, Fuel, CreditCard, MinusCircle, Banknote } from 'lucide-react';
-import { updateCompany } from '@/lib/store';
+import { updateCompany, getCurrentStation, getStationData } from '@/lib/store';
 import { toast } from 'sonner';
 import { createPdf, addTable, addSummaryRow, downloadPdf, formatNum } from '@/lib/pdf';
 
