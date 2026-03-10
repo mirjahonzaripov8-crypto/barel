@@ -226,7 +226,7 @@ export default function DashboardLayout() {
           </div>
           <div className="flex items-center gap-2">
             <ReminderNotifications />
-            <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : '🔧 Operator'}</span>
+            <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : user?.role === 'OMBORCHI' ? '📦 Omborchi' : '🔧 Operator'}</span>
             <span className={cn("text-xs px-2 py-1 rounded-md font-medium", getPlanColor())}>
               {plan === 'PREMIUM' && <Crown className="h-3 w-3 inline mr-1" />}
               {plan}
