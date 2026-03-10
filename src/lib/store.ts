@@ -8,8 +8,9 @@ export interface FuelType {
 export interface DayRecord {
   date: string;
   operator: string;
+  stationIndex: number; // which station this record belongs to
   fuels: {
-    type: string;
+    type: string; // e.g. "AI-92 #1" or "AI-92"
     start: number;
     sold: number;
     end: number;
