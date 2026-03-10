@@ -23,6 +23,7 @@ import TelegramPage from "./pages/dashboard/TelegramPage";
 import CustomFeaturePage from "./pages/dashboard/CustomFeaturePage";
 import SafePage from "./pages/dashboard/SafePage";
 import RemindersPage from "./pages/dashboard/RemindersPage";
+import SalesPage from "./pages/dashboard/SalesPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import CompanyViewPage from "./pages/CompanyViewPage";
 
