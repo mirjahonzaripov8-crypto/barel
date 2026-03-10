@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { MinusCircle, FileDown } from 'lucide-react';
 import { createPdf, addTable, addSummaryRow, downloadPdf, formatNum } from '@/lib/pdf';
 import { toast } from 'sonner';
+import { getCurrentStation, getStationData } from '@/lib/store';
 
 export default function ExpensesPage() {
   const { company } = useAuth();

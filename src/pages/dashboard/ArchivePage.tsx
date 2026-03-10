@@ -18,7 +18,9 @@ export default function ArchivePage() {
 
   if (!company) return null;
 
-  const filtered = company.data.filter(d => isInRange(d.date, from, to));
+  const stationIdx = getCurrentStation();
+  const stationRecords = getStationData(company, stationIdx);
+  const filtered = stationRecords.filter(d => isInRange(d.date, from, to));
 
   // Per-row data for table
   const rows = filtered.flatMap((d) =>
