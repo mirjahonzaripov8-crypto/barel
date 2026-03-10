@@ -435,6 +435,115 @@ export function getStationFuelTypes(company: Company, stationIndex: number): Fue
   return company.fuelTypes;
 }
 
+// Get data filtered by station index (backward compat: records without stationIndex are station 0)
+export function getStationData(company: Company, stationIndex: number): DayRecord[] {
+  return company.data.filter(d => (d.stationIndex ?? 0) === stationIndex);
+}
+
+// Get base fuel name from meter label (e.g. "AI-92 #1" → "AI-92")
+export function getBaseFuelName(type: string): string {
+  return type.replace(/ #\d+$/, '');
+}
+
+// Get aggregated fuel stats per base type for a station (combines multi-meter)
+export function getAggregatedFuelStats(company: Company, stationIndex: number) {
+  const stationData = getStationData(company, stationIndex);
+  const stationFuels = getStationFuelTypes(company, stationIndex);
+  
+  // Get last day data
+  const sortedData = [...stationData].sort((a, b) => b.date.localeCompare(a.date));
+  const lastDay = sortedData[0];
+  
+  return stationFuels.map(ft => {
+    const count = ft.meterCount || 1;
+    // For remaining: sum all meters of this fuel type from last day
+    let remaining = 0;
+    let lastSold = 0;
+    
+    if (lastDay) {
+      for (let m = 0; m < count; m++) {
+        const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+        const fuel = lastDay.fuels.find(f => f.type === label);
+        if (fuel) {
+          // Remaining = end value (last meter reading)
+          // For multi-meter: they share the same tank, so we take end from any (they should be similar)
+          // Actually for inventory tracking, remaining should be calculated from prixod and sold
+          lastSold += fuel.sold;
+        }
+      }
+    }
+    
+    // Calculate remaining inventory from all data (total prixod - total sold)
+    let totalPrixod = 0;
+    let totalSold = 0;
+    for (const day of stationData) {
+      for (let m = 0; m < count; m++) {
+        const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+        const fuel = day.fuels.find(f => f.type === label);
+        if (fuel) {
+          totalPrixod += fuel.prixod || 0;
+          totalSold += fuel.sold;
+        }
+      }
+    }
+    remaining = totalPrixod - totalSold;
+    if (remaining < 0) remaining = 0; // can happen with initial data
+    
+    // If we have a last day end value and no prixod tracking, use end value as remaining
+    if (totalPrixod === 0 && lastDay) {
+      remaining = 0;
+      for (let m = 0; m < count; m++) {
+        const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+        const fuel = lastDay.fuels.find(f => f.type === label);
+        if (fuel) remaining += fuel.end;
+      }
+    }
+
+    // Average daily sales (last 30 days)
+    const last30 = stationData.filter(d => {
+      const diff = (Date.now() - new Date(d.date).getTime()) / 86400000;
+      return diff <= 30;
+    });
+    let totalSoldLast30 = 0;
+    for (const day of last30) {
+      for (let m = 0; m < count; m++) {
+        const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+        const fuel = day.fuels.find(f => f.type === label);
+        if (fuel) totalSoldLast30 += fuel.sold;
+      }
+    }
+    const avgDaily = last30.length > 0 ? totalSoldLast30 / last30.length : 0;
+    
+    // Month-to-date sales
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    let monthSold = 0;
+    for (const day of stationData) {
+      if (day.date >= monthStart) {
+        for (let m = 0; m < count; m++) {
+          const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+          const fuel = day.fuels.find(f => f.type === label);
+          if (fuel) monthSold += fuel.sold;
+        }
+      }
+    }
+    
+    // Days remaining
+    const daysRemaining = avgDaily > 0 ? remaining / avgDaily : 999;
+
+    return {
+      name: ft.name,
+      unit: ft.unit,
+      remaining,
+      lastSold,
+      avgDaily: Math.round(avgDaily),
+      monthSold,
+      daysRemaining: Math.round(daysRemaining * 10) / 10,
+      price: 0, // will be set from conf
+    };
+  });
+}
+
 // Subscription check
 export function checkSubscription(company: Company): { locked: boolean; warning: boolean; daysLeft?: number } {
   const now = new Date();
