@@ -38,6 +38,7 @@ export default function DashboardLayout() {
 
   // Filter nav items based on plan and role
   const isOperator = user?.role === 'OPERATOR';
+  const isOmborchi = user?.role === 'OMBORCHI';
   
   // Get custom features for this plan
   const customFeatureItems = [
@@ -49,13 +50,16 @@ export default function DashboardLayout() {
     label: cf.status === 'testing' ? `🧪 ${cf.title}` : `✨ ${cf.title}`,
   }));
 
+  const omborchiRoutes = ['/dashboard', '/dashboard/plomba'];
+
   const navItems = [
     ...allNavItems.filter(item => {
       if (!isRouteAllowed(plan, item.path)) return false;
       if (isOperator && item.path !== '/dashboard/meter') return false;
+      if (isOmborchi && !omborchiRoutes.includes(item.path)) return false;
       return true;
     }),
-    ...(isOperator ? [] : customFeatureItems),
+    ...((isOperator || isOmborchi) ? [] : customFeatureItems),
   ];
 
   // Redirect if trying to access restricted route
