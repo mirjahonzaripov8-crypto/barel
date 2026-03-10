@@ -590,7 +590,7 @@ export function addLog(companyKey: string, user: string, action: string, detail:
 export function seedDemoData() {
   if (getCompanies().length > 0) return;
   
-  const demoFuels: FuelType[] = [
+  const station1Fuels: FuelType[] = [
     { name: 'Propan', unit: 'L', meterCount: 1 },
     { name: 'AI-91', unit: 'L', meterCount: 1 },
     { name: 'AI-92', unit: 'L', meterCount: 2 },
@@ -599,46 +599,79 @@ export function seedDemoData() {
     { name: 'Metan', unit: 'm³', meterCount: 1 },
   ];
 
-  const demoData: DayRecord[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    demoData.push({
-      date: d.toISOString().split('T')[0],
-      operator: 'Operator 1',
-      fuels: demoFuels.map(f => ({
-        type: f.name,
-        start: 10000 + Math.floor(Math.random() * 5000),
-        sold: 200 + Math.floor(Math.random() * 800),
-        end: 0,
-        price: f.name === 'Metan' ? 2800 : f.name === 'Dizel' ? 11500 : f.name === 'AI-95' ? 12500 : f.name === 'AI-91' ? 10800 : 9500,
-      })),
-      expenses: [{ reason: 'Elektr energiya', amount: 150000 + Math.floor(Math.random() * 100000) }],
-      terminal: 500000 + Math.floor(Math.random() * 2000000),
-    });
-  }
-  // Set end = start + sold for each
-  demoData.forEach(d => d.fuels.forEach(f => f.end = f.start + f.sold));
+  const station2Fuels: FuelType[] = [
+    { name: 'AI-92', unit: 'L', meterCount: 1 },
+    { name: 'AI-95', unit: 'L', meterCount: 1 },
+    { name: 'Dizel', unit: 'L', meterCount: 1 },
+  ];
+
+  const prices: Record<string, number> = { 'Propan': 6500, 'AI-91': 9200, 'AI-92': 9800, 'AI-95': 10500, 'Dizel': 9800, 'Metan': 2200 };
+
+  // Generate demo data for station 1
+  const generateStationData = (stationIdx: number, fuels: FuelType[]): DayRecord[] => {
+    const data: DayRecord[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const expandedFuels: DayRecord['fuels'] = [];
+      fuels.forEach(ft => {
+        const count = ft.meterCount || 1;
+        for (let m = 0; m < count; m++) {
+          const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+          const start = 10000 + Math.floor(Math.random() * 5000);
+          const sold = 200 + Math.floor(Math.random() * 800);
+          expandedFuels.push({
+            type: label,
+            start,
+            sold,
+            end: start + sold,
+            price: prices[ft.name] || 9500,
+            prixod: Math.random() > 0.7 ? 500 + Math.floor(Math.random() * 2000) : 0,
+            tannarx: Math.random() > 0.7 ? (prices[ft.name] || 9500) * 0.85 : 0,
+          });
+        }
+      });
+      data.push({
+        date: d.toISOString().split('T')[0],
+        operator: stationIdx === 0 ? 'Aliyev Jasur' : 'Rahimov Sardor',
+        stationIndex: stationIdx,
+        fuels: expandedFuels,
+        expenses: [{ reason: 'Elektr energiya', amount: 150000 + Math.floor(Math.random() * 100000) }],
+        terminal: 500000 + Math.floor(Math.random() * 2000000),
+      });
+    }
+    return data;
+  };
+
+  const allData = [...generateStationData(0, station1Fuels), ...generateStationData(1, station2Fuels)];
 
   const trialEnd = new Date();
   trialEnd.setDate(trialEnd.getDate() + 5);
+
+  const allFuelTypes = station1Fuels; // superset
 
   const demoCompany: Company = {
     key: 'demo_company',
     name: 'BUXORO YOQILG\'I MCHJ',
     phone: '+998 91 123 45 67',
     stations: ['BUXORO-1', 'QORAKUL-2'],
-    fuelTypes: demoFuels,
+    fuelTypes: allFuelTypes,
+    stationConfigs: [
+      { fuelTypes: station1Fuels },
+      { fuelTypes: station2Fuels },
+    ],
     plan: 'STANDART',
     subscription: { status: 'trial', trial_end_date: trialEnd.toISOString() },
     promocode: 'DEMO',
     users: [
       { login: 'demo', password: 'demo', name: 'Zaripov Mansur', role: 'BOSS' },
-      { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'OPERATOR' },
+      { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'OPERATOR', stationIndex: 0 },
+      { login: 'ishchi2', password: '1234', name: 'Rahimov Sardor', role: 'OPERATOR', stationIndex: 1 },
+      { login: 'ombor1', password: '1234', name: 'Karimov Bekzod', role: 'OMBORCHI' },
     ],
-    data: demoData,
+    data: allData,
     conf: {
-      prices: { 'Propan': 6500, 'AI-91': 9200, 'AI-92': 9800, 'AI-95': 10500, 'Dizel': 9800, 'Metan': 2200 },
+      prices,
       fix: 2500000,
     },
     logs: [
