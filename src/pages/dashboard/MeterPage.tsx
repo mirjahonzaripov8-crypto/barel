@@ -27,8 +27,9 @@ export default function MeterPage() {
   // Get the latest end value for a fuel type from all saved data (up to but not including current date)
   const getPreviousEnd = useCallback((fuelType: string, beforeDate: string): number => {
     if (!company?.data.length) return 0;
+    const stationIdx = getCurrentStation();
     const sorted = [...company.data]
-      .filter(d => d.date < beforeDate)
+      .filter(d => d.date < beforeDate && (d.stationIndex ?? 0) === stationIdx)
       .sort((a, b) => b.date.localeCompare(a.date));
     for (const day of sorted) {
       const fuel = day.fuels.find(f => f.type === fuelType);
