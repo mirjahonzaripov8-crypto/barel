@@ -14,6 +14,7 @@ import ReminderNotifications from '@/components/ReminderNotifications';
 const allNavItems = [
   { path: '/dashboard', icon: Home, label: 'Bosh sahifa' },
   { path: '/dashboard/finance', icon: DollarSign, label: 'Moliya' },
+  { path: '/dashboard/sales', icon: ShoppingCart, label: 'Sotuv', minPlan: 'STANDART' },
   { path: '/dashboard/expenses', icon: MinusCircle, label: 'Xarajatlar' },
   { path: '/dashboard/meter', icon: Gauge, label: 'Hisoblagich' },
   { path: '/dashboard/archive', icon: Archive, label: 'Arxiv' },
