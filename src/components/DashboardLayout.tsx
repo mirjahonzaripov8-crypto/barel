@@ -72,7 +72,10 @@ export default function DashboardLayout() {
     if (isOperator && location.pathname !== '/dashboard/meter') {
       navigate('/dashboard/meter');
     }
-  }, [location.pathname, plan, navigate, isOperator]);
+    if (isOmborchi && !omborchiRoutes.includes(location.pathname)) {
+      navigate('/dashboard');
+    }
+  }, [location.pathname, plan, navigate, isOperator, isOmborchi]);
 
   const handleLogout = () => {
     logout();
