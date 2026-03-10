@@ -155,10 +155,11 @@ export default function MeterPage() {
     if (!hasEnd) { toast.error("Kamida bitta yoqilg'i uchun oxirgi ko'rsatkichni kiriting!"); return; }
 
     const now = new Date().toISOString();
+    const stationIdx = getCurrentStation();
 
     updateCompany(company.key, c => {
-      const existing = c.data.findIndex(d => d.date === date);
-      const record = { date, operator, fuels, expenses, terminal, savedAt: now };
+      const existing = c.data.findIndex(d => d.date === date && (d.stationIndex ?? 0) === stationIdx);
+      const record: DayRecord = { date, operator, stationIndex: stationIdx, fuels, expenses, terminal, savedAt: now };
       if (existing >= 0) {
         c.data[existing] = record;
       } else {
