@@ -41,8 +41,9 @@ export default function MeterPage() {
   // Load data when date or company changes
   useEffect(() => {
     if (!company) return;
+    const stationIdx = getCurrentStation();
 
-    const existing = company.data.find(d => d.date === date);
+    const existing = company.data.find(d => d.date === date && (d.stationIndex ?? 0) === stationIdx);
     if (existing) {
       setIsExistingRecord(true);
       setSavedAt(existing.savedAt || null);
@@ -61,9 +62,7 @@ export default function MeterPage() {
     } else {
       setIsExistingRecord(false);
       setSavedAt(null);
-      // New day - expand fuels based on meterCount (per-station)
       const expandedFuels: typeof fuels = [];
-      const stationIdx = getCurrentStation();
       const stationFuels = getStationFuelTypes(company, stationIdx);
       stationFuels.forEach(ft => {
         const count = ft.meterCount || 1;
@@ -75,7 +74,7 @@ export default function MeterPage() {
             start: prevEnd,
             sold: 0,
             end: 0,
-            price: company.conf.prices[ft.name] || 0,
+            price: company.conf.prices[ft.name] || 0, // shared price from base fuel name
             prixod: 0,
             tannarx: 0,
           });
