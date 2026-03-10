@@ -23,6 +23,7 @@ import TelegramPage from "./pages/dashboard/TelegramPage";
 import CustomFeaturePage from "./pages/dashboard/CustomFeaturePage";
 import SafePage from "./pages/dashboard/SafePage";
 import RemindersPage from "./pages/dashboard/RemindersPage";
+import SalesPage from "./pages/dashboard/SalesPage";
 import SuperAdminPage from "./pages/SuperAdminPage";
 import CompanyViewPage from "./pages/CompanyViewPage";
 
@@ -76,6 +77,7 @@ const App: React.FC = () => (
               <Route path="telegram" element={<TelegramPage />} />
               <Route path="safe" element={<SafePage />} />
               <Route path="reminders" element={<RemindersPage />} />
+              <Route path="sales" element={<SalesPage />} />
               <Route path="feature/:featureId" element={<CustomFeaturePage />} />
             </Route>
             <Route path="/admin" element={<AdminRoute><SuperAdminPage /></AdminRoute>} />

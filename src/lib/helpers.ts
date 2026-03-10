@@ -83,7 +83,7 @@ export const PLANS = {
       'Telegram bot (kunlik hisobot)',
       'Parol + Harakatlar tarixi'
     ],
-    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/security', '/dashboard/telegram', '/dashboard/ai', '/dashboard/safe', '/dashboard/reminders'],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/security', '/dashboard/telegram', '/dashboard/ai', '/dashboard/safe', '/dashboard/reminders', '/dashboard/sales'],
     canExportPdf: true,
     canExportExcel: false,
     hasCharts: true,
@@ -109,7 +109,7 @@ export const PLANS = {
       'Referal tizimi',
       'Ustuvor texnik yordam'
     ],
-    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/referrals', '/dashboard/security', '/dashboard/ai', '/dashboard/telegram', '/dashboard/safe', '/dashboard/reminders'],
+    allowedRoutes: ['/dashboard', '/dashboard/finance', '/dashboard/expenses', '/dashboard/meter', '/dashboard/archive', '/dashboard/workers', '/dashboard/plomba', '/dashboard/referrals', '/dashboard/security', '/dashboard/ai', '/dashboard/telegram', '/dashboard/safe', '/dashboard/reminders', '/dashboard/sales'],
     canExportPdf: true,
     canExportExcel: true,
     hasCharts: true,

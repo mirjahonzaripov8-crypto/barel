@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getTodayStr, formatCurrency, formatNumber } from '@/lib/helpers';
-import { updateCompany, addLog, getStationFuelTypes, getCurrentStation } from '@/lib/store';
+import { updateCompany, addLog, getStationFuelTypes, getCurrentStation, getBaseFuelName, type DayRecord } from '@/lib/store';
 import { supabase } from '@/integrations/supabase/client';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -27,8 +27,9 @@ export default function MeterPage() {
   // Get the latest end value for a fuel type from all saved data (up to but not including current date)
   const getPreviousEnd = useCallback((fuelType: string, beforeDate: string): number => {
     if (!company?.data.length) return 0;
+    const stationIdx = getCurrentStation();
     const sorted = [...company.data]
-      .filter(d => d.date < beforeDate)
+      .filter(d => d.date < beforeDate && (d.stationIndex ?? 0) === stationIdx)
       .sort((a, b) => b.date.localeCompare(a.date));
     for (const day of sorted) {
       const fuel = day.fuels.find(f => f.type === fuelType);
@@ -40,8 +41,9 @@ export default function MeterPage() {
   // Load data when date or company changes
   useEffect(() => {
     if (!company) return;
+    const stationIdx = getCurrentStation();
 
-    const existing = company.data.find(d => d.date === date);
+    const existing = company.data.find(d => d.date === date && (d.stationIndex ?? 0) === stationIdx);
     if (existing) {
       setIsExistingRecord(true);
       setSavedAt(existing.savedAt || null);
@@ -60,9 +62,7 @@ export default function MeterPage() {
     } else {
       setIsExistingRecord(false);
       setSavedAt(null);
-      // New day - expand fuels based on meterCount (per-station)
       const expandedFuels: typeof fuels = [];
-      const stationIdx = getCurrentStation();
       const stationFuels = getStationFuelTypes(company, stationIdx);
       stationFuels.forEach(ft => {
         const count = ft.meterCount || 1;
@@ -74,7 +74,7 @@ export default function MeterPage() {
             start: prevEnd,
             sold: 0,
             end: 0,
-            price: company.conf.prices[ft.name] || 0,
+            price: company.conf.prices[ft.name] || 0, // shared price from base fuel name
             prixod: 0,
             tannarx: 0,
           });
@@ -155,10 +155,11 @@ export default function MeterPage() {
     if (!hasEnd) { toast.error("Kamida bitta yoqilg'i uchun oxirgi ko'rsatkichni kiriting!"); return; }
 
     const now = new Date().toISOString();
+    const stationIdx = getCurrentStation();
 
     updateCompany(company.key, c => {
-      const existing = c.data.findIndex(d => d.date === date);
-      const record = { date, operator, fuels, expenses, terminal, savedAt: now };
+      const existing = c.data.findIndex(d => d.date === date && (d.stationIndex ?? 0) === stationIdx);
+      const record: DayRecord = { date, operator, stationIndex: stationIdx, fuels, expenses, terminal, savedAt: now };
       if (existing >= 0) {
         c.data[existing] = record;
       } else {

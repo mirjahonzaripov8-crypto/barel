@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send, Sparkles, Vault, Bell
+  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send, Sparkles, Vault, Bell, ShoppingCart, Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -14,6 +14,7 @@ import ReminderNotifications from '@/components/ReminderNotifications';
 const allNavItems = [
   { path: '/dashboard', icon: Home, label: 'Bosh sahifa' },
   { path: '/dashboard/finance', icon: DollarSign, label: 'Moliya' },
+  { path: '/dashboard/sales', icon: ShoppingCart, label: 'Sotuv', minPlan: 'STANDART' },
   { path: '/dashboard/expenses', icon: MinusCircle, label: 'Xarajatlar' },
   { path: '/dashboard/meter', icon: Gauge, label: 'Hisoblagich' },
   { path: '/dashboard/archive', icon: Archive, label: 'Arxiv' },
@@ -37,6 +38,7 @@ export default function DashboardLayout() {
 
   // Filter nav items based on plan and role
   const isOperator = user?.role === 'OPERATOR';
+  const isOmborchi = user?.role === 'OMBORCHI';
   
   // Get custom features for this plan
   const customFeatureItems = [
@@ -48,13 +50,16 @@ export default function DashboardLayout() {
     label: cf.status === 'testing' ? `🧪 ${cf.title}` : `✨ ${cf.title}`,
   }));
 
+  const omborchiRoutes = ['/dashboard', '/dashboard/plomba'];
+
   const navItems = [
     ...allNavItems.filter(item => {
       if (!isRouteAllowed(plan, item.path)) return false;
       if (isOperator && item.path !== '/dashboard/meter') return false;
+      if (isOmborchi && !omborchiRoutes.includes(item.path)) return false;
       return true;
     }),
-    ...(isOperator ? [] : customFeatureItems),
+    ...((isOperator || isOmborchi) ? [] : customFeatureItems),
   ];
 
   // Redirect if trying to access restricted route
@@ -67,7 +72,10 @@ export default function DashboardLayout() {
     if (isOperator && location.pathname !== '/dashboard/meter') {
       navigate('/dashboard/meter');
     }
-  }, [location.pathname, plan, navigate, isOperator]);
+    if (isOmborchi && !omborchiRoutes.includes(location.pathname)) {
+      navigate('/dashboard');
+    }
+  }, [location.pathname, plan, navigate, isOperator, isOmborchi]);
 
   const handleLogout = () => {
     logout();
@@ -218,7 +226,7 @@ export default function DashboardLayout() {
           </div>
           <div className="flex items-center gap-2">
             <ReminderNotifications />
-            <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : '🔧 Operator'}</span>
+            <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : user?.role === 'OMBORCHI' ? '📦 Omborchi' : '🔧 Operator'}</span>
             <span className={cn("text-xs px-2 py-1 rounded-md font-medium", getPlanColor())}>
               {plan === 'PREMIUM' && <Crown className="h-3 w-3 inline mr-1" />}
               {plan}

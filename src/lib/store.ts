@@ -8,8 +8,9 @@ export interface FuelType {
 export interface DayRecord {
   date: string;
   operator: string;
+  stationIndex: number; // which station this record belongs to
   fuels: {
-    type: string;
+    type: string; // e.g. "AI-92 #1" or "AI-92"
     start: number;
     sold: number;
     end: number;
@@ -59,7 +60,8 @@ export interface CompanyUser {
   login: string;
   password: string;
   name: string;
-  role: 'BOSS' | 'OPERATOR';
+  role: 'BOSS' | 'OPERATOR' | 'OMBORCHI';
+  stationIndex?: number; // which station this user is assigned to
 }
 
 export interface LogEntry {
@@ -433,6 +435,115 @@ export function getStationFuelTypes(company: Company, stationIndex: number): Fue
   return company.fuelTypes;
 }
 
+// Get data filtered by station index (backward compat: records without stationIndex are station 0)
+export function getStationData(company: Company, stationIndex: number): DayRecord[] {
+  return company.data.filter(d => (d.stationIndex ?? 0) === stationIndex);
+}
+
+// Get base fuel name from meter label (e.g. "AI-92 #1" → "AI-92")
+export function getBaseFuelName(type: string): string {
+  return type.replace(/ #\d+$/, '');
+}
+
+// Get aggregated fuel stats per base type for a station (combines multi-meter)
+export function getAggregatedFuelStats(company: Company, stationIndex: number) {
+  const stationData = getStationData(company, stationIndex);
+  const stationFuels = getStationFuelTypes(company, stationIndex);
+  
+  // Get last day data
+  const sortedData = [...stationData].sort((a, b) => b.date.localeCompare(a.date));
+  const lastDay = sortedData[0];
+  
+  return stationFuels.map(ft => {
+    const count = ft.meterCount || 1;
+    // For remaining: sum all meters of this fuel type from last day
+    let remaining = 0;
+    let lastSold = 0;
+    
+    if (lastDay) {
+      for (let m = 0; m < count; m++) {
+        const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+        const fuel = lastDay.fuels.find(f => f.type === label);
+        if (fuel) {
+          // Remaining = end value (last meter reading)
+          // For multi-meter: they share the same tank, so we take end from any (they should be similar)
+          // Actually for inventory tracking, remaining should be calculated from prixod and sold
+          lastSold += fuel.sold;
+        }
+      }
+    }
+    
+    // Calculate remaining inventory from all data (total prixod - total sold)
+    let totalPrixod = 0;
+    let totalSold = 0;
+    for (const day of stationData) {
+      for (let m = 0; m < count; m++) {
+        const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+        const fuel = day.fuels.find(f => f.type === label);
+        if (fuel) {
+          totalPrixod += fuel.prixod || 0;
+          totalSold += fuel.sold;
+        }
+      }
+    }
+    remaining = totalPrixod - totalSold;
+    if (remaining < 0) remaining = 0; // can happen with initial data
+    
+    // If we have a last day end value and no prixod tracking, use end value as remaining
+    if (totalPrixod === 0 && lastDay) {
+      remaining = 0;
+      for (let m = 0; m < count; m++) {
+        const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+        const fuel = lastDay.fuels.find(f => f.type === label);
+        if (fuel) remaining += fuel.end;
+      }
+    }
+
+    // Average daily sales (last 30 days)
+    const last30 = stationData.filter(d => {
+      const diff = (Date.now() - new Date(d.date).getTime()) / 86400000;
+      return diff <= 30;
+    });
+    let totalSoldLast30 = 0;
+    for (const day of last30) {
+      for (let m = 0; m < count; m++) {
+        const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+        const fuel = day.fuels.find(f => f.type === label);
+        if (fuel) totalSoldLast30 += fuel.sold;
+      }
+    }
+    const avgDaily = last30.length > 0 ? totalSoldLast30 / last30.length : 0;
+    
+    // Month-to-date sales
+    const now = new Date();
+    const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
+    let monthSold = 0;
+    for (const day of stationData) {
+      if (day.date >= monthStart) {
+        for (let m = 0; m < count; m++) {
+          const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+          const fuel = day.fuels.find(f => f.type === label);
+          if (fuel) monthSold += fuel.sold;
+        }
+      }
+    }
+    
+    // Days remaining
+    const daysRemaining = avgDaily > 0 ? remaining / avgDaily : 999;
+
+    return {
+      name: ft.name,
+      unit: ft.unit,
+      remaining,
+      lastSold,
+      avgDaily: Math.round(avgDaily),
+      monthSold,
+      daysRemaining: Math.round(daysRemaining * 10) / 10,
+      price: 0, // will be set from conf
+    };
+  });
+}
+
 // Subscription check
 export function checkSubscription(company: Company): { locked: boolean; warning: boolean; daysLeft?: number } {
   const now = new Date();
@@ -479,7 +590,7 @@ export function addLog(companyKey: string, user: string, action: string, detail:
 export function seedDemoData() {
   if (getCompanies().length > 0) return;
   
-  const demoFuels: FuelType[] = [
+  const station1Fuels: FuelType[] = [
     { name: 'Propan', unit: 'L', meterCount: 1 },
     { name: 'AI-91', unit: 'L', meterCount: 1 },
     { name: 'AI-92', unit: 'L', meterCount: 2 },
@@ -488,46 +599,79 @@ export function seedDemoData() {
     { name: 'Metan', unit: 'm³', meterCount: 1 },
   ];
 
-  const demoData: DayRecord[] = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date();
-    d.setDate(d.getDate() - i);
-    demoData.push({
-      date: d.toISOString().split('T')[0],
-      operator: 'Operator 1',
-      fuels: demoFuels.map(f => ({
-        type: f.name,
-        start: 10000 + Math.floor(Math.random() * 5000),
-        sold: 200 + Math.floor(Math.random() * 800),
-        end: 0,
-        price: f.name === 'Metan' ? 2800 : f.name === 'Dizel' ? 11500 : f.name === 'AI-95' ? 12500 : f.name === 'AI-91' ? 10800 : 9500,
-      })),
-      expenses: [{ reason: 'Elektr energiya', amount: 150000 + Math.floor(Math.random() * 100000) }],
-      terminal: 500000 + Math.floor(Math.random() * 2000000),
-    });
-  }
-  // Set end = start + sold for each
-  demoData.forEach(d => d.fuels.forEach(f => f.end = f.start + f.sold));
+  const station2Fuels: FuelType[] = [
+    { name: 'AI-92', unit: 'L', meterCount: 1 },
+    { name: 'AI-95', unit: 'L', meterCount: 1 },
+    { name: 'Dizel', unit: 'L', meterCount: 1 },
+  ];
+
+  const prices: Record<string, number> = { 'Propan': 6500, 'AI-91': 9200, 'AI-92': 9800, 'AI-95': 10500, 'Dizel': 9800, 'Metan': 2200 };
+
+  // Generate demo data for station 1
+  const generateStationData = (stationIdx: number, fuels: FuelType[]): DayRecord[] => {
+    const data: DayRecord[] = [];
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const expandedFuels: DayRecord['fuels'] = [];
+      fuels.forEach(ft => {
+        const count = ft.meterCount || 1;
+        for (let m = 0; m < count; m++) {
+          const label = count > 1 ? `${ft.name} #${m + 1}` : ft.name;
+          const start = 10000 + Math.floor(Math.random() * 5000);
+          const sold = 200 + Math.floor(Math.random() * 800);
+          expandedFuels.push({
+            type: label,
+            start,
+            sold,
+            end: start + sold,
+            price: prices[ft.name] || 9500,
+            prixod: Math.random() > 0.7 ? 500 + Math.floor(Math.random() * 2000) : 0,
+            tannarx: Math.random() > 0.7 ? (prices[ft.name] || 9500) * 0.85 : 0,
+          });
+        }
+      });
+      data.push({
+        date: d.toISOString().split('T')[0],
+        operator: stationIdx === 0 ? 'Aliyev Jasur' : 'Rahimov Sardor',
+        stationIndex: stationIdx,
+        fuels: expandedFuels,
+        expenses: [{ reason: 'Elektr energiya', amount: 150000 + Math.floor(Math.random() * 100000) }],
+        terminal: 500000 + Math.floor(Math.random() * 2000000),
+      });
+    }
+    return data;
+  };
+
+  const allData = [...generateStationData(0, station1Fuels), ...generateStationData(1, station2Fuels)];
 
   const trialEnd = new Date();
   trialEnd.setDate(trialEnd.getDate() + 5);
+
+  const allFuelTypes = station1Fuels; // superset
 
   const demoCompany: Company = {
     key: 'demo_company',
     name: 'BUXORO YOQILG\'I MCHJ',
     phone: '+998 91 123 45 67',
     stations: ['BUXORO-1', 'QORAKUL-2'],
-    fuelTypes: demoFuels,
+    fuelTypes: allFuelTypes,
+    stationConfigs: [
+      { fuelTypes: station1Fuels },
+      { fuelTypes: station2Fuels },
+    ],
     plan: 'STANDART',
     subscription: { status: 'trial', trial_end_date: trialEnd.toISOString() },
     promocode: 'DEMO',
     users: [
       { login: 'demo', password: 'demo', name: 'Zaripov Mansur', role: 'BOSS' },
-      { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'OPERATOR' },
+      { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'OPERATOR', stationIndex: 0 },
+      { login: 'ishchi2', password: '1234', name: 'Rahimov Sardor', role: 'OPERATOR', stationIndex: 1 },
+      { login: 'ombor1', password: '1234', name: 'Karimov Bekzod', role: 'OMBORCHI' },
     ],
-    data: demoData,
+    data: allData,
     conf: {
-      prices: { 'Propan': 6500, 'AI-91': 9200, 'AI-92': 9800, 'AI-95': 10500, 'Dizel': 9800, 'Metan': 2200 },
+      prices,
       fix: 2500000,
     },
     logs: [
