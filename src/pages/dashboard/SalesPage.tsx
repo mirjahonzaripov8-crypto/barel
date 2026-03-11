@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { BarChart3, Fuel, TrendingUp, Calendar } from 'lucide-react';
 import { ResponsiveContainer, ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Cell, LineChart, Line } from 'recharts';
 import { getCurrentStation, getStationData, getBaseFuelName, getStationFuelTypes } from '@/lib/store';
+import GlassCard from '@/components/GlassCard';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 export default function SalesPage() {
   const { company } = useAuth();
@@ -21,72 +23,39 @@ export default function SalesPage() {
   const hasMultiStations = company.stations.length > 1;
   const stationFuels = getStationFuelTypes(company, stationIdx);
 
-  const getFilteredData = (sIdx: number) => {
-    return getStationData(company, sIdx).filter(d => isInRange(d.date, from, to));
-  };
-
+  const getFilteredData = (sIdx: number) => getStationData(company, sIdx).filter(d => isInRange(d.date, from, to));
   const filtered = getFilteredData(stationIdx);
-
-  // Unique base fuel names
   const fuelNames = stationFuels.map(ft => ft.name);
 
-  // Per-fuel stats
   const fuelSalesStats = fuelNames.map(name => {
-    let totalSold = 0;
-    let totalRevenue = 0;
-    for (const d of filtered) {
-      for (const f of d.fuels) {
-        if (getBaseFuelName(f.type) === name) {
-          totalSold += f.sold;
-          totalRevenue += f.sold * f.price;
-        }
-      }
-    }
-    const avgDaily = filtered.length > 0 ? totalSold / filtered.length : 0;
-    return { name, totalSold, totalRevenue, avgDaily: Math.round(avgDaily) };
+    let totalSold = 0, totalRevenue = 0;
+    for (const d of filtered) for (const f of d.fuels) if (getBaseFuelName(f.type) === name) { totalSold += f.sold; totalRevenue += f.sold * f.price; }
+    return { name, totalSold, totalRevenue, avgDaily: filtered.length > 0 ? Math.round(totalSold / filtered.length) : 0 };
   });
 
   const totalSoldAll = fuelSalesStats.reduce((s, f) => s + f.totalSold, 0);
   const totalRevenueAll = fuelSalesStats.reduce((s, f) => s + f.totalRevenue, 0);
   const avgDailyAll = filtered.length > 0 ? totalSoldAll / filtered.length : 0;
 
-  // Daily candlestick data
+  // Candlestick data
   const dailyData = filtered.map((d, i) => {
     const prev = i > 0 ? filtered[i-1] : null;
-    const todayTotal = d.fuels
-      .filter(f => selectedFuel === 'all' || getBaseFuelName(f.type) === selectedFuel)
-      .reduce((s, f) => s + f.sold * f.price, 0);
-    const prevTotal = prev ? prev.fuels
-      .filter(f => selectedFuel === 'all' || getBaseFuelName(f.type) === selectedFuel)
-      .reduce((s, f) => s + f.sold * f.price, 0) : todayTotal;
-    
-    const isUp = todayTotal >= prevTotal;
+    const todayTotal = d.fuels.filter(f => selectedFuel === 'all' || getBaseFuelName(f.type) === selectedFuel).reduce((s, f) => s + f.sold * f.price, 0);
+    const prevTotal = prev ? prev.fuels.filter(f => selectedFuel === 'all' || getBaseFuelName(f.type) === selectedFuel).reduce((s, f) => s + f.sold * f.price, 0) : todayTotal;
     return {
       date: d.date.slice(5),
       fullDate: d.date,
       sotuv: todayTotal,
-      sold: d.fuels
-        .filter(f => selectedFuel === 'all' || getBaseFuelName(f.type) === selectedFuel)
-        .reduce((s, f) => s + f.sold, 0),
-      color: isUp ? 'hsl(142 71% 45%)' : 'hsl(0 84% 60%)',
+      sold: d.fuels.filter(f => selectedFuel === 'all' || getBaseFuelName(f.type) === selectedFuel).reduce((s, f) => s + f.sold, 0),
+      color: todayTotal >= prevTotal ? 'hsl(142 71% 45%)' : 'hsl(0 84% 60%)',
     };
   });
 
-  // Station comparison
   const stationStats = compareMode ? company.stations.map((name, idx) => {
     const sData = getFilteredData(idx);
-    let totalSold = 0;
-    let totalRevenue = 0;
-    for (const d of sData) {
-      for (const f of d.fuels) {
-        if (selectedFuel === 'all' || getBaseFuelName(f.type) === selectedFuel) {
-          totalSold += f.sold;
-          totalRevenue += f.sold * f.price;
-        }
-      }
-    }
-    const avgDaily = sData.length > 0 ? totalSold / sData.length : 0;
-    return { name, totalSold, totalRevenue, avgDaily: Math.round(avgDaily), days: sData.length };
+    let totalSold = 0, totalRevenue = 0;
+    for (const d of sData) for (const f of d.fuels) if (selectedFuel === 'all' || getBaseFuelName(f.type) === selectedFuel) { totalSold += f.sold; totalRevenue += f.sold * f.price; }
+    return { name, totalSold, totalRevenue, avgDaily: sData.length > 0 ? Math.round(totalSold / sData.length) : 0, days: sData.length };
   }) : [];
 
   return (
@@ -94,7 +63,7 @@ export default function SalesPage() {
       <h1 className="text-2xl font-bold text-foreground mb-6">SOTUV TAHLILI</h1>
 
       {/* Controls */}
-      <div className="bg-card border border-border rounded-xl p-4 md:p-6 mb-6">
+      <GlassCard className="mb-6">
         <div className="flex flex-wrap items-end gap-3 mb-4">
           <div><Label className="text-xs">Dan</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1 w-40" /></div>
           <div><Label className="text-xs">Gacha</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1 w-40" /></div>
@@ -106,39 +75,38 @@ export default function SalesPage() {
             </select>
           </div>
           {hasMultiStations && (
-            <Button variant={compareMode ? 'default' : 'outline'} onClick={() => setCompareMode(!compareMode)}>
+            <Button variant={compareMode ? 'default' : 'outline'} onClick={() => setCompareMode(!compareMode)} className="btn-glow">
               {compareMode ? '✓ Solishtirish' : 'Zapravkalar solishtirish'}
             </Button>
           )}
         </div>
 
-        {/* Summary cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <div className="bg-secondary/50 rounded-xl p-4">
+          <GlassCard hover={false} className="!p-4">
             <div className="flex items-center gap-2 mb-1"><Fuel className="h-4 w-4 text-primary" /><span className="text-xs text-muted-foreground">Jami sotildi</span></div>
-            <p className="text-xl font-bold text-foreground">{formatNumber(totalSoldAll)} L</p>
-          </div>
-          <div className="bg-secondary/50 rounded-xl p-4">
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={totalSoldAll} formatter={formatNumber} /> L</p>
+          </GlassCard>
+          <GlassCard hover={false} className="!p-4">
             <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-success" /><span className="text-xs text-muted-foreground">Sotuv summasi</span></div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(totalRevenueAll)}</p>
-          </div>
-          <div className="bg-secondary/50 rounded-xl p-4">
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={totalRevenueAll} formatter={formatCurrency} /></p>
+          </GlassCard>
+          <GlassCard hover={false} className="!p-4">
             <div className="flex items-center gap-2 mb-1"><Calendar className="h-4 w-4 text-primary" /><span className="text-xs text-muted-foreground">O'rtacha/kun</span></div>
-            <p className="text-xl font-bold text-foreground">{formatNumber(Math.round(avgDailyAll))} L</p>
-          </div>
-          <div className="bg-secondary/50 rounded-xl p-4">
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={Math.round(avgDailyAll)} formatter={formatNumber} /> L</p>
+          </GlassCard>
+          <GlassCard hover={false} className="!p-4">
             <div className="flex items-center gap-2 mb-1"><BarChart3 className="h-4 w-4 text-primary" /><span className="text-xs text-muted-foreground">Kunlar soni</span></div>
-            <p className="text-xl font-bold text-foreground">{filtered.length}</p>
-          </div>
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={filtered.length} /></p>
+          </GlassCard>
         </div>
-      </div>
+      </GlassCard>
 
-      {/* Per-fuel breakdown */}
-      <div className="bg-card border border-border rounded-xl p-4 md:p-6 mb-6">
+      {/* Per-fuel */}
+      <GlassCard className="mb-6">
         <h3 className="font-semibold text-foreground mb-4">Mahsulotlar bo'yicha</h3>
         <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
           {fuelSalesStats.map(fs => (
-            <div key={fs.name} className="bg-secondary/30 rounded-xl p-4">
+            <GlassCard key={fs.name} hover={false} className="!p-4 bg-white/50">
               <div className="flex items-center gap-2 mb-2">
                 <Fuel className="h-4 w-4 text-primary" />
                 <span className="font-semibold text-sm text-foreground">{fs.name}</span>
@@ -148,13 +116,13 @@ export default function SalesPage() {
                 <div className="flex justify-between"><span className="text-muted-foreground">Summa:</span><span className="font-medium">{formatCurrency(fs.totalRevenue)}</span></div>
                 <div className="flex justify-between"><span className="text-muted-foreground">O'rtacha/kun:</span><span className="font-medium">{formatNumber(fs.avgDaily)} L</span></div>
               </div>
-            </div>
+            </GlassCard>
           ))}
         </div>
-      </div>
+      </GlassCard>
 
-      {/* Candlestick chart */}
-      <div className="bg-card border border-border rounded-xl p-4 md:p-6 mb-6">
+      {/* Candlestick */}
+      <GlassCard className="mb-6">
         <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-primary" />
           Kunlik sotuv diagramasi (yapon shamlari)
@@ -162,49 +130,42 @@ export default function SalesPage() {
         <div className="h-[320px]">
           <ResponsiveContainer width="100%" height="100%">
             <ComposedChart data={dailyData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(37,99,235,0.1)" />
               <XAxis dataKey="date" fontSize={11} />
               <YAxis fontSize={11} tickFormatter={v => `${(v/1000000).toFixed(1)}M`} />
-              <Tooltip 
-                formatter={(v: number, name: string) => [
-                  name === 'sotuv' ? formatCurrency(v) : `${formatNumber(v)} L`, 
-                  name === 'sotuv' ? 'Summa' : 'Litr'
-                ]} 
-              />
+              <Tooltip formatter={(v: number, name: string) => [name === 'sotuv' ? formatCurrency(v) : `${formatNumber(v)} L`, name === 'sotuv' ? 'Summa' : 'Litr']} />
               <Bar dataKey="sotuv" name="Sotuv summasi" radius={[3,3,0,0]} barSize={16}>
-                {dailyData.map((entry, index) => (
-                  <Cell key={index} fill={entry.color} />
-                ))}
+                {dailyData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
               </Bar>
             </ComposedChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </GlassCard>
 
-      {/* Volume trend line */}
-      <div className="bg-card border border-border rounded-xl p-4 md:p-6 mb-6">
+      {/* Volume trend */}
+      <GlassCard className="mb-6">
         <h3 className="font-semibold text-foreground mb-4">Sotuv hajmi (litr)</h3>
         <div className="h-[250px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={dailyData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(37,99,235,0.1)" />
               <XAxis dataKey="date" fontSize={11} />
               <YAxis fontSize={11} />
               <Tooltip formatter={(v: number) => [`${formatNumber(v)} L`, 'Sotildi']} />
-              <Line type="monotone" dataKey="sold" className="stroke-primary" strokeWidth={2} dot={{ r: 3 }} />
+              <Line type="monotone" dataKey="sold" stroke="hsl(221 83% 53%)" strokeWidth={2} dot={{ r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </GlassCard>
 
       {/* Station comparison */}
       {compareMode && hasMultiStations && (
-        <div className="bg-card border border-border rounded-xl p-4 md:p-6">
+        <GlassCard>
           <h3 className="font-semibold text-foreground mb-4">Zapravkalar solishtirmasi</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-border">
+                <tr className="border-b border-border/50">
                   <th className="text-left py-2 px-3 text-muted-foreground text-xs">Zapravka</th>
                   <th className="text-right py-2 px-3 text-muted-foreground text-xs">Sotildi (L)</th>
                   <th className="text-right py-2 px-3 text-muted-foreground text-xs">Summa</th>
@@ -213,7 +174,7 @@ export default function SalesPage() {
               </thead>
               <tbody>
                 {stationStats.map((s, i) => (
-                  <tr key={i} className="border-b border-border/50 hover:bg-secondary/30">
+                  <tr key={i} className="border-b border-border/30 table-row-hover">
                     <td className="py-2 px-3 font-medium">{s.name}</td>
                     <td className="py-2 px-3 text-right">{formatNumber(s.totalSold)} L</td>
                     <td className="py-2 px-3 text-right">{formatCurrency(s.totalRevenue)}</td>
@@ -233,7 +194,7 @@ export default function SalesPage() {
           <div className="h-[250px] mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={stationStats}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(37,99,235,0.1)" />
                 <XAxis dataKey="name" fontSize={12} />
                 <YAxis fontSize={11} />
                 <Tooltip formatter={(v: number) => formatNumber(v) + ' L'} />
@@ -243,7 +204,7 @@ export default function SalesPage() {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </GlassCard>
       )}
     </div>
   );

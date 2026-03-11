@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { formatCurrency, getMonthAgoStr, getTodayStr, isInRange } from '@/lib/helpers';
+import { formatCurrency, formatNumber, getMonthAgoStr, getTodayStr, isInRange } from '@/lib/helpers';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,8 @@ import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, ComposedChart, Bar, 
 import { updateCompany, getStationData, getCurrentStation, getBaseFuelName } from '@/lib/store';
 import { toast } from 'sonner';
 import { createPdf, addTable, addSummaryRow, downloadPdf, formatNum } from '@/lib/pdf';
+import GlassCard from '@/components/GlassCard';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 const COLORS = ['#2563EB', '#16a34a', '#d97706', '#dc2626', '#8b5cf6', '#ec4899'];
 
@@ -18,28 +20,20 @@ export default function FinancePage() {
   const [to, setTo] = useState(getTodayStr());
   const [fixCost, setFixCost] = useState(company?.conf.fix || 0);
   const [compareMode, setCompareMode] = useState(false);
-  const [selectedStations, setSelectedStations] = useState<number[]>([getCurrentStation()]);
 
   if (!company) return null;
 
   const stationIdx = getCurrentStation();
   const hasMultiStations = company.stations.length > 1;
 
-  // Get data for selected stations
-  const getFilteredData = (sIdx: number) => {
-    const sData = getStationData(company, sIdx);
-    return sData.filter(d => isInRange(d.date, from, to));
-  };
-
+  const getFilteredData = (sIdx: number) => getStationData(company, sIdx).filter(d => isInRange(d.date, from, to));
   const filtered = getFilteredData(stationIdx);
 
-  // Current station stats
   const revenue = filtered.reduce((s, d) => s + d.fuels.reduce((a, f) => a + f.sold * f.price, 0), 0);
   const expenses = filtered.reduce((s, d) => s + d.expenses.reduce((a, e) => a + e.amount, 0), 0) + fixCost * filtered.length / 30;
   const costTotal = filtered.reduce((s, d) => s + d.fuels.reduce((a, f) => a + (f.prixod || 0) * (f.tannarx || 0), 0), 0);
   const net = revenue - expenses - costTotal;
 
-  // Yesterday comparison
   const today = getTodayStr();
   const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
   const todayData = getStationData(company, stationIdx).find(d => d.date === today);
@@ -53,19 +47,13 @@ export default function FinancePage() {
   const yesterdayRevenue = yesterdayData ? yesterdayData.fuels.reduce((s, f) => s + f.sold * f.price, 0) : 0;
   const revenueDiff = todayRevenue - yesterdayRevenue;
 
-  // Pie data
   const fuelNames = new Set<string>();
   filtered.forEach(d => d.fuels.forEach(f => fuelNames.add(getBaseFuelName(f.type))));
   const pieData = [...fuelNames].map(name => ({
     name,
-    value: filtered.reduce((s, d) => {
-      return s + d.fuels
-        .filter(f => getBaseFuelName(f.type) === name)
-        .reduce((a, f) => a + f.sold * f.price - (f.prixod || 0) * (f.tannarx || 0), 0);
-    }, 0),
+    value: filtered.reduce((s, d) => s + d.fuels.filter(f => getBaseFuelName(f.type) === name).reduce((a, f) => a + f.sold * f.price - (f.prixod || 0) * (f.tannarx || 0), 0), 0),
   })).filter(d => d.value > 0);
 
-  // Candlestick-like daily profit chart
   const candleData = filtered.map((d, i) => {
     const dayRevenue = d.fuels.reduce((s, f) => s + f.sold * f.price, 0);
     const dayExp = d.expenses.reduce((s, e) => s + e.amount, 0);
@@ -73,14 +61,9 @@ export default function FinancePage() {
     const profit = dayRevenue - dayExp - dayCost;
     const prevDay = i > 0 ? filtered[i-1] : null;
     const prevProfit = prevDay ? prevDay.fuels.reduce((s, f) => s + f.sold * f.price, 0) - prevDay.expenses.reduce((s, e) => s + e.amount, 0) - prevDay.fuels.reduce((s, f) => s + (f.prixod || 0) * (f.tannarx || 0), 0) : profit;
-    return {
-      date: d.date.slice(5),
-      foyda: profit,
-      color: profit >= prevProfit ? 'hsl(var(--success))' : 'hsl(var(--destructive))',
-    };
+    return { date: d.date.slice(5), foyda: profit, color: profit >= prevProfit ? 'hsl(142 71% 45%)' : 'hsl(0 84% 60%)' };
   });
 
-  // Multi-station comparison
   const stationComparison = compareMode ? company.stations.map((name, idx) => {
     const sData = getFilteredData(idx);
     const rev = sData.reduce((s, d) => s + d.fuels.reduce((a, f) => a + f.sold * f.price, 0), 0);
@@ -98,27 +81,12 @@ export default function FinancePage() {
   const exportPdf = () => {
     const doc = createPdf('MOLIYA VA TAHLIL', from, to);
     let y = 36;
-    doc.setFontSize(12);
-    doc.text('Umumiy ko\'rsatkichlar', 14, y);
-    y += 6;
-    y = addTable(doc, [['Ko\'rsatkich', 'Summa']], [
-      ['Tushum', formatNum(revenue) + ' so\'m'],
-      ['Xarajatlar', formatNum(Math.round(expenses)) + ' so\'m'],
-      ['Tannarx (prixod)', formatNum(costTotal) + ' so\'m'],
-      ['SOF FOYDA', formatNum(net) + ' so\'m'],
-    ], y);
-    y += 8;
-    doc.setFontSize(12);
-    doc.text('Kunlik tafsilot', 14, y);
-    y += 6;
-    const body = filtered.map(d => {
-      const rev = d.fuels.reduce((a, f) => a + f.sold * f.price, 0);
-      const exp = d.expenses.reduce((a, e) => a + e.amount, 0);
-      const cost = d.fuels.reduce((a, f) => a + (f.prixod || 0) * (f.tannarx || 0), 0);
-      return [d.date, formatNum(rev), formatNum(exp), formatNum(cost), formatNum(rev - exp - cost)];
-    });
+    doc.setFontSize(12); doc.text("Umumiy ko'rsatkichlar", 14, y); y += 6;
+    y = addTable(doc, [["Ko'rsatkich", 'Summa']], [['Tushum', formatNum(revenue) + " so'm"], ['Xarajatlar', formatNum(Math.round(expenses)) + " so'm"], ['Tannarx', formatNum(costTotal) + " so'm"], ['SOF FOYDA', formatNum(net) + " so'm"]], y);
+    y += 8; doc.setFontSize(12); doc.text('Kunlik tafsilot', 14, y); y += 6;
+    const body = filtered.map(d => { const rev = d.fuels.reduce((a, f) => a + f.sold * f.price, 0); const exp = d.expenses.reduce((a, e) => a + e.amount, 0); const cost = d.fuels.reduce((a, f) => a + (f.prixod || 0) * (f.tannarx || 0), 0); return [d.date, formatNum(rev), formatNum(exp), formatNum(cost), formatNum(rev - exp - cost)]; });
     y = addTable(doc, [['Sana', 'Tushum', 'Xarajat', 'Tannarx', 'Foyda']], body, y);
-    y = addSummaryRow(doc, 'JAMI SOF FOYDA:', formatNum(net) + ' so\'m', y);
+    y = addSummaryRow(doc, 'JAMI SOF FOYDA:', formatNum(net) + " so'm", y);
     downloadPdf(doc, `moliya_${from}_${to}.pdf`);
     toast.success('PDF yuklandi!');
   };
@@ -138,76 +106,71 @@ export default function FinancePage() {
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">MOLIYA VA TAHLIL</h1>
 
-      {/* Date range & controls */}
-      <div className="bg-card border border-border rounded-xl p-4 md:p-6 mb-6">
+      <GlassCard className="mb-6">
         <div className="flex flex-wrap items-end gap-4 mb-6">
           <div><Label className="text-xs">Dan</Label><Input type="date" value={from} onChange={e => setFrom(e.target.value)} className="mt-1 w-40" /></div>
           <div><Label className="text-xs">Gacha</Label><Input type="date" value={to} onChange={e => setTo(e.target.value)} className="mt-1 w-40" /></div>
           <Button onClick={exportPdf} variant="outline" className="gap-2"><FileDown className="h-4 w-4" />PDF yuklab olish</Button>
           {hasMultiStations && (
-            <Button variant={compareMode ? 'default' : 'outline'} onClick={() => setCompareMode(!compareMode)} className="gap-2">
+            <Button variant={compareMode ? 'default' : 'outline'} onClick={() => setCompareMode(!compareMode)} className="gap-2 btn-glow">
               {compareMode ? '✓ Solishtirish' : 'Zapravkalarni solishtirish'}
             </Button>
           )}
         </div>
 
-        {/* Today vs Yesterday */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-          <div className="bg-secondary/50 rounded-xl p-4">
+          <GlassCard hover={false} className="!p-4">
             <span className="text-xs text-muted-foreground">Bugun sotildi</span>
-            <p className="text-xl font-bold text-foreground">{todaySales.toLocaleString()} L</p>
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={todaySales} formatter={v => v.toLocaleString()} /> L</p>
             <DiffBadge value={salesDiff} unit="L" />
-          </div>
-          <div className="bg-secondary/50 rounded-xl p-4">
+          </GlassCard>
+          <GlassCard hover={false} className="!p-4">
             <span className="text-xs text-muted-foreground">Bugungi tushum</span>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(todayRevenue)}</p>
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={todayRevenue} formatter={formatCurrency} /></p>
             <DiffBadge value={revenueDiff} />
-          </div>
-          <div className="bg-secondary/50 rounded-xl p-4">
+          </GlassCard>
+          <GlassCard hover={false} className="!p-4">
             <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-success" /><span className="text-xs text-muted-foreground">Tushum</span></div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(revenue)}</p>
-          </div>
-          <div className={`rounded-xl p-4 ${net >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={revenue} formatter={formatCurrency} /></p>
+          </GlassCard>
+          <GlassCard hover={false} className={`!p-4 ${net >= 0 ? 'bg-success/10' : 'bg-destructive/10'}`}>
             <div className="flex items-center gap-2 mb-1"><DollarSign className="h-4 w-4" /><span className="text-xs text-muted-foreground">SOF FOYDA</span></div>
-            <p className={`text-xl font-bold ${net >= 0 ? 'text-success' : 'text-destructive'}`}>{formatCurrency(net)}</p>
-          </div>
+            <p className={`text-xl font-bold ${net >= 0 ? 'text-success' : 'text-destructive'}`}><AnimatedCounter value={net} formatter={formatCurrency} /></p>
+          </GlassCard>
         </div>
 
-        {/* KPI detail row */}
         <div className="grid sm:grid-cols-3 gap-3">
-          <div className="bg-secondary/50 rounded-xl p-4">
+          <GlassCard hover={false} className="!p-4">
             <div className="flex items-center gap-2 mb-1"><TrendingDown className="h-4 w-4 text-destructive" /><span className="text-xs text-muted-foreground">Xarajatlar</span></div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(expenses)}</p>
-          </div>
-          <div className="bg-secondary/50 rounded-xl p-4">
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={Math.round(expenses)} formatter={formatCurrency} /></p>
+          </GlassCard>
+          <GlassCard hover={false} className="!p-4">
             <div className="flex items-center gap-2 mb-1"><DollarSign className="h-4 w-4 text-warning" /><span className="text-xs text-muted-foreground">Tannarx</span></div>
-            <p className="text-xl font-bold text-foreground">{formatCurrency(costTotal)}</p>
-          </div>
-          <div className="bg-secondary/50 rounded-xl p-4">
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={costTotal} formatter={formatCurrency} /></p>
+          </GlassCard>
+          <GlassCard hover={false} className="!p-4">
             <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-primary" /><span className="text-xs text-muted-foreground">Jami sotuv (L)</span></div>
-            <p className="text-xl font-bold text-foreground">{filtered.reduce((s, d) => s + d.fuels.reduce((a, f) => a + f.sold, 0), 0).toLocaleString()} L</p>
-          </div>
+            <p className="text-xl font-bold text-foreground"><AnimatedCounter value={filtered.reduce((s, d) => s + d.fuels.reduce((a, f) => a + f.sold, 0), 0)} /> L</p>
+          </GlassCard>
         </div>
-      </div>
+      </GlassCard>
 
-      {/* Multi-station comparison */}
+      {/* Station comparison */}
       {compareMode && hasMultiStations && (
-        <div className="bg-card border border-border rounded-xl p-4 md:p-6 mb-6">
+        <GlassCard className="mb-6">
           <h3 className="font-semibold text-foreground mb-4">Zapravkalar solishtirmasi</h3>
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border">
-                  <th className="text-left py-2 px-3 text-muted-foreground text-xs font-medium">Zapravka</th>
-                  <th className="text-right py-2 px-3 text-muted-foreground text-xs font-medium">Tushum</th>
-                  <th className="text-right py-2 px-3 text-muted-foreground text-xs font-medium">Xarajatlar</th>
-                  <th className="text-right py-2 px-3 text-muted-foreground text-xs font-medium">Tannarx</th>
-                  <th className="text-right py-2 px-3 text-muted-foreground text-xs font-medium">Foyda</th>
-                </tr>
-              </thead>
+              <thead><tr className="border-b border-border/50">
+                <th className="text-left py-2 px-3 text-muted-foreground text-xs font-medium">Zapravka</th>
+                <th className="text-right py-2 px-3 text-muted-foreground text-xs font-medium">Tushum</th>
+                <th className="text-right py-2 px-3 text-muted-foreground text-xs font-medium">Xarajatlar</th>
+                <th className="text-right py-2 px-3 text-muted-foreground text-xs font-medium">Tannarx</th>
+                <th className="text-right py-2 px-3 text-muted-foreground text-xs font-medium">Foyda</th>
+              </tr></thead>
               <tbody>
                 {stationComparison.map((s, i) => (
-                  <tr key={i} className="border-b border-border/50 hover:bg-secondary/30">
+                  <tr key={i} className="border-b border-border/30 table-row-hover">
                     <td className="py-2 px-3 font-medium">{s.name}</td>
                     <td className="py-2 px-3 text-right">{formatCurrency(s.revenue)}</td>
                     <td className="py-2 px-3 text-right text-destructive">{formatCurrency(s.expenses)}</td>
@@ -225,12 +188,10 @@ export default function FinancePage() {
               </tbody>
             </table>
           </div>
-
-          {/* Comparison bar chart */}
           <div className="h-[250px] mt-4">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={stationComparison}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(37,99,235,0.1)" />
                 <XAxis dataKey="name" fontSize={12} />
                 <YAxis fontSize={11} tickFormatter={v => `${(v/1000000).toFixed(1)}M`} />
                 <Tooltip formatter={(v: number) => formatCurrency(v)} />
@@ -240,32 +201,28 @@ export default function FinancePage() {
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </GlassCard>
       )}
 
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Daily profit candlestick */}
-        <div className="bg-card border border-border rounded-xl p-4 md:p-6">
+        <GlassCard>
           <h3 className="font-semibold text-foreground mb-4">Kunlik foyda dinamikasi</h3>
           <div className="h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
               <ComposedChart data={candleData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(37,99,235,0.1)" />
                 <XAxis dataKey="date" fontSize={11} />
                 <YAxis fontSize={11} tickFormatter={v => `${(v/1000000).toFixed(1)}M`} />
                 <Tooltip formatter={(v: number) => formatCurrency(v)} />
                 <Bar dataKey="foyda" name="Foyda" radius={[4,4,0,0]}>
-                  {candleData.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
-                  ))}
+                  {candleData.map((entry, index) => <Cell key={index} fill={entry.color} />)}
                 </Bar>
               </ComposedChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </GlassCard>
 
-        {/* Pie chart */}
-        <div className="bg-card border border-border rounded-xl p-4 md:p-6">
+        <GlassCard>
           <h3 className="font-semibold text-foreground mb-4">Mahsulotlar foydasi</h3>
           <div className="h-[240px]">
             <ResponsiveContainer width="100%" height="100%">
@@ -277,11 +234,10 @@ export default function FinancePage() {
               </PieChart>
             </ResponsiveContainer>
           </div>
-        </div>
+        </GlassCard>
       </div>
 
-      {/* Settings */}
-      <div className="bg-card border border-border rounded-xl p-4 md:p-6 mt-6">
+      <GlassCard className="mt-6">
         <h3 className="font-semibold text-foreground mb-4">Sozlamalar</h3>
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex-1 min-w-[200px]">
@@ -289,9 +245,9 @@ export default function FinancePage() {
             <Input type="number" value={fixCost || ''} onChange={e => setFixCost(Number(e.target.value))} placeholder="Masalan: 2 500 000" className="mt-1" />
             <p className="text-xs text-muted-foreground mt-1">Ijara, kommunal va boshqa doimiy xarajatlar</p>
           </div>
-          <Button onClick={saveConf}>SAQLASH</Button>
+          <Button onClick={saveConf} className="btn-glow">SAQLASH</Button>
         </div>
-      </div>
+      </GlassCard>
     </div>
   );
 }
