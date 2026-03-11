@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send, Sparkles, Vault, Bell, ShoppingCart, Package
+  Home, DollarSign, MinusCircle, Gauge, Archive, Users, Lock, Shield, Bot, Gift, LogOut, Menu, X, Zap, Crown, Send, Sparkles, Vault, Bell, ShoppingCart, Package, Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -10,6 +10,7 @@ import { isRouteAllowed, type PlanKey } from '@/lib/helpers';
 import { getActiveFeaturesByPlan, getTestingFeaturesByPlan, getCurrentStation, setCurrentStation } from '@/lib/store';
 import SubscriptionGuard from '@/components/SubscriptionGuard';
 import ReminderNotifications from '@/components/ReminderNotifications';
+import AnimatedBackground from '@/components/AnimatedBackground';
 
 const allNavItems = [
   { path: '/dashboard', icon: Home, label: 'Bosh sahifa' },
@@ -24,7 +25,7 @@ const allNavItems = [
   { path: '/dashboard/telegram', icon: Send, label: 'Telegram', minPlan: 'STANDART' },
   { path: '/dashboard/safe', icon: Vault, label: 'Seyf', minPlan: 'STANDART' },
   { path: '/dashboard/reminders', icon: Bell, label: 'Eslatmalar', minPlan: 'STANDART' },
-  { path: '/dashboard/security', icon: Shield, label: 'Xavfsizlik' },
+  { path: '/dashboard/security', icon: Shield, label: 'Sozlamalar' },
   { path: '/dashboard/ai', icon: Bot, label: 'AI yordamchi', minPlan: 'PREMIUM' },
 ];
 
@@ -36,11 +37,9 @@ export default function DashboardLayout() {
 
   const plan = (company?.plan || 'START') as PlanKey;
 
-  // Filter nav items based on plan and role
   const isOperator = user?.role === 'OPERATOR';
   const isOmborchi = user?.role === 'OMBORCHI';
   
-  // Get custom features for this plan
   const customFeatureItems = [
     ...getActiveFeaturesByPlan(plan),
     ...getTestingFeaturesByPlan(plan),
@@ -62,7 +61,6 @@ export default function DashboardLayout() {
     ...((isOperator || isOmborchi) ? [] : customFeatureItems),
   ];
 
-  // Redirect if trying to access restricted route
   useEffect(() => {
     const isCustomFeatureRoute = location.pathname.startsWith('/dashboard/feature/');
     if (!isCustomFeatureRoute && !isRouteAllowed(plan, location.pathname)) {
@@ -77,10 +75,7 @@ export default function DashboardLayout() {
     }
   }, [location.pathname, plan, navigate, isOperator, isOmborchi]);
 
-  const handleLogout = () => {
-    logout();
-    navigate('/');
-  };
+  const handleLogout = () => { logout(); navigate('/'); };
   const isActive = (path: string) => location.pathname === path;
   const currentStation = getCurrentStation();
   const stationName = company?.stations?.[currentStation] || company?.stations?.[0] || company?.name || '';
@@ -93,16 +88,18 @@ export default function DashboardLayout() {
   const getPlanColor = () => {
     switch (plan) {
       case 'PREMIUM': return 'bg-gradient-to-r from-yellow-500 to-orange-500 text-white';
-      case 'STANDART': return 'bg-gradient-to-r from-blue-500 to-purple-500 text-white';
+      case 'STANDART': return 'bg-gradient-to-r from-primary to-blue-400 text-primary-foreground';
       default: return 'bg-secondary text-foreground';
     }
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen flex relative">
+      <AnimatedBackground />
+
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col w-64 bg-card border-r border-border shrink-0">
-        <div className="h-16 flex items-center gap-2 px-5 border-b border-border">
+      <aside className="hidden lg:flex flex-col w-64 glass-sidebar shrink-0 relative z-10">
+        <div className="h-16 flex items-center gap-2 px-5 border-b border-white/20">
           <Zap className="h-6 w-6 text-primary" />
           <span className="font-bold text-foreground">BAREL<span className="text-primary">.uz</span></span>
         </div>
@@ -114,8 +111,8 @@ export default function DashboardLayout() {
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200",
                 isActive(item.path)
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-foreground hover:bg-secondary hover:translate-x-0.5"
+                  ? "bg-primary text-primary-foreground shadow-md"
+                  : "text-foreground hover:bg-white/40 hover:translate-x-0.5"
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" />
@@ -125,24 +122,19 @@ export default function DashboardLayout() {
           ))}
         </nav>
         
-        {/* Upgrade prompt for non-premium */}
         {plan !== 'PREMIUM' && (
-          <div className="mx-3 mb-3 p-3 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
+          <div className="mx-3 mb-3 p-3 glass-card rounded-lg">
             <p className="text-xs text-muted-foreground mb-2">
               {plan === 'START' ? 'Ishchilar va Plomba' : 'AI va Referallar'} uchun
             </p>
-            <Button 
-              size="sm" 
-              className="w-full text-xs"
-              onClick={() => navigate('/dashboard')}
-            >
+            <Button size="sm" className="w-full text-xs btn-glow" onClick={() => navigate('/dashboard')}>
               <Crown className="h-3 w-3 mr-1" />
               {plan === 'START' ? 'PRO ga' : 'PREMIUM ga'} yangilash
             </Button>
           </div>
         )}
 
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-white/20">
           <div className="px-3 py-2 mb-2">
             <p className="text-xs text-muted-foreground">Foydalanuvchi</p>
             <p className="text-sm font-medium text-foreground truncate">{user?.name}</p>
@@ -156,10 +148,10 @@ export default function DashboardLayout() {
       {/* Mobile overlay */}
       {mobileOpen && <div className="lg:hidden fixed inset-0 z-40 bg-foreground/30 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />}
       <aside className={cn(
-        "lg:hidden fixed inset-y-0 left-0 z-50 w-72 bg-card border-r border-border transform transition-transform duration-300",
+        "lg:hidden fixed inset-y-0 left-0 z-50 w-72 glass-sidebar transform transition-transform duration-300",
         mobileOpen ? "translate-x-0" : "-translate-x-full"
       )}>
-        <div className="h-16 flex items-center justify-between px-5 border-b border-border">
+        <div className="h-16 flex items-center justify-between px-5 border-b border-white/20">
           <div className="flex items-center gap-2">
             <Zap className="h-6 w-6 text-primary" />
             <span className="font-bold text-foreground">BAREL<span className="text-primary">.uz</span></span>
@@ -173,9 +165,7 @@ export default function DashboardLayout() {
               onClick={() => { navigate(item.path); setMobileOpen(false); }}
               className={cn(
                 "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all",
-                isActive(item.path)
-                  ? "bg-primary text-primary-foreground"
-                  : "text-foreground hover:bg-secondary"
+                isActive(item.path) ? "bg-primary text-primary-foreground" : "text-foreground hover:bg-white/40"
               )}
             >
               <item.icon className="h-4 w-4 shrink-0" /> {item.label}
@@ -183,21 +173,7 @@ export default function DashboardLayout() {
             </button>
           ))}
         </nav>
-        
-        {plan !== 'PREMIUM' && (
-          <div className="mx-3 mb-3 p-3 bg-gradient-to-br from-primary/10 to-primary/5 border border-primary/20 rounded-lg">
-            <Button 
-              size="sm" 
-              className="w-full text-xs"
-              onClick={() => { navigate('/dashboard'); setMobileOpen(false); }}
-            >
-              <Crown className="h-3 w-3 mr-1" />
-              Tarifni yangilash
-            </Button>
-          </div>
-        )}
-
-        <div className="p-3 border-t border-border">
+        <div className="p-3 border-t border-white/20">
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium text-destructive hover:bg-destructive/10 transition-colors">
             <LogOut className="h-4 w-4" /> Chiqish
           </button>
@@ -205,8 +181,8 @@ export default function DashboardLayout() {
       </aside>
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
-        <header className="h-16 flex items-center justify-between px-4 lg:px-6 border-b border-border bg-card shrink-0">
+      <div className="flex-1 flex flex-col min-w-0 relative z-10">
+        <header className="h-16 flex items-center justify-between px-4 lg:px-6 glass-header shrink-0">
           <div className="flex items-center gap-3">
             <button onClick={() => setMobileOpen(true)} className="lg:hidden text-foreground hover:text-primary">
               <Menu className="h-5 w-5" />
@@ -216,7 +192,7 @@ export default function DashboardLayout() {
               <select
                 value={currentStation}
                 onChange={e => handleStationChange(Number(e.target.value))}
-                className="text-xs bg-secondary border border-border rounded-md px-2 py-1 text-foreground"
+                className="text-xs glass-card rounded-md px-2 py-1 text-foreground border-none"
               >
                 {company.stations.map((s, i) => (
                   <option key={i} value={i}>{s}</option>
@@ -226,7 +202,9 @@ export default function DashboardLayout() {
           </div>
           <div className="flex items-center gap-2">
             <ReminderNotifications />
-            <span className="hidden sm:inline text-xs text-muted-foreground">{user?.role === 'BOSS' ? '👑 Boss' : user?.role === 'OMBORCHI' ? '📦 Omborchi' : '🔧 Operator'}</span>
+            <span className="hidden sm:inline text-xs text-muted-foreground">
+              {user?.role === 'BOSS' ? '👑 Boss' : user?.role === 'OMBORCHI' ? '📦 Omborchi' : '🔧 Operator'}
+            </span>
             <span className={cn("text-xs px-2 py-1 rounded-md font-medium", getPlanColor())}>
               {plan === 'PREMIUM' && <Crown className="h-3 w-3 inline mr-1" />}
               {plan}

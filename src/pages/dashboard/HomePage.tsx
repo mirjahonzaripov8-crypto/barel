@@ -4,6 +4,8 @@ import { getStationFuelTypes, getCurrentStation, getActiveFeaturesByPlan, getTes
 import { Fuel, BarChart3, Sparkles, TrendingUp, Package, Calendar } from 'lucide-react';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import GlassCard from '@/components/GlassCard';
+import AnimatedCounter from '@/components/AnimatedCounter';
 
 export default function HomePage() {
   const { company } = useAuth();
@@ -19,7 +21,6 @@ export default function HomePage() {
   const stationData = getStationData(company, stationIdx);
   const fuelStats = getAggregatedFuelStats(company, stationIdx);
 
-  // Chart data (last 7 days for this station)
   const chartData = stationData
     .slice(-7)
     .map(d => ({
@@ -27,23 +28,22 @@ export default function HomePage() {
       sotuv: d.fuels.reduce((sum, f) => sum + f.sold * f.price, 0),
     }));
 
-  // Color helper for days remaining
   const getStockColor = (days: number) => {
-    if (days <= 2) return { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-destructive/30', dot: 'bg-destructive' };
-    if (days <= 4) return { bg: 'bg-warning/10', text: 'text-warning', border: 'border-warning/30', dot: 'bg-warning' };
-    return { bg: 'bg-success/10', text: 'text-success', border: 'border-success/30', dot: 'bg-success' };
+    if (days <= 2) return { bg: 'bg-destructive/10', text: 'text-destructive', border: 'border-destructive/30', dot: 'bg-destructive', label: 'Kritik' };
+    if (days <= 4) return { bg: 'bg-warning/10', text: 'text-warning', border: 'border-warning/30', dot: 'bg-warning', label: 'Ogohlantirish' };
+    return { bg: 'bg-success/10', text: 'text-success', border: 'border-success/30', dot: 'bg-success', label: 'Yaxshi' };
   };
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-foreground mb-6">BOSHQARUV PANELI</h1>
 
-      {/* Fuel stock cards with color indicators */}
+      {/* Fuel stock cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-6 stagger-children">
         {fuelStats.map(f => {
           const colors = getStockColor(f.daysRemaining);
           return (
-            <div key={f.name} className={`${colors.bg} border ${colors.border} rounded-xl p-4 hover:-translate-y-1 hover:shadow-lg transition-all duration-300`}>
+            <GlassCard key={f.name} className={`${colors.bg} border ${colors.border}`}>
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2">
                   <Fuel className={`h-5 w-5 ${colors.text}`} />
@@ -63,7 +63,7 @@ export default function HomePage() {
                     <Package className="h-3 w-3" /> Qoldiq
                   </span>
                   <span className="text-lg font-bold text-foreground">
-                    {formatNumber(f.remaining)} <span className="text-xs text-muted-foreground">{f.unit}</span>
+                    <AnimatedCounter value={f.remaining} formatter={formatNumber} /> <span className="text-xs text-muted-foreground">{f.unit}</span>
                   </span>
                 </div>
                 
@@ -72,7 +72,7 @@ export default function HomePage() {
                     <TrendingUp className="h-3 w-3" /> O'rtacha/kun
                   </span>
                   <span className="text-sm font-semibold text-foreground">
-                    {formatNumber(f.avgDaily)} {f.unit}
+                    <AnimatedCounter value={f.avgDaily} formatter={formatNumber} /> {f.unit}
                   </span>
                 </div>
 
@@ -81,7 +81,7 @@ export default function HomePage() {
                     <Calendar className="h-3 w-3" /> Oylik sotuv
                   </span>
                   <span className="text-sm font-semibold text-foreground">
-                    {formatNumber(f.monthSold)} {f.unit}
+                    <AnimatedCounter value={f.monthSold} formatter={formatNumber} /> {f.unit}
                   </span>
                 </div>
 
@@ -92,13 +92,13 @@ export default function HomePage() {
                   </span>
                 </div>
               </div>
-            </div>
+            </GlassCard>
           );
         })}
       </div>
 
       {/* Chart */}
-      <div className="bg-card border border-border rounded-xl p-4 md:p-6">
+      <GlassCard>
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 className="h-5 w-5 text-primary" />
           <h2 className="font-semibold text-foreground">Haftalik sotuv grafikasi</h2>
@@ -106,15 +106,15 @@ export default function HomePage() {
         <div className="h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(37,99,235,0.1)" />
               <XAxis dataKey="date" fontSize={12} className="fill-muted-foreground" />
               <YAxis fontSize={12} className="fill-muted-foreground" tickFormatter={v => `${(v/1000000).toFixed(1)}M`} />
               <Tooltip formatter={(v: number) => formatCurrency(v)} labelFormatter={l => `Sana: ${l}`} />
-              <Line type="monotone" dataKey="sotuv" className="stroke-primary" strokeWidth={2.5} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+              <Line type="monotone" dataKey="sotuv" stroke="hsl(221 83% 53%)" strokeWidth={2.5} dot={{ r: 4, fill: 'hsl(221 83% 53%)' }} activeDot={{ r: 6 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
-      </div>
+      </GlassCard>
 
       {/* Custom Features */}
       {customFeatures.length > 0 && (
@@ -124,10 +124,10 @@ export default function HomePage() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {customFeatures.map(cf => (
-              <button
+              <GlassCard
                 key={cf.id}
+                className="cursor-pointer"
                 onClick={() => navigate(`/dashboard/feature/${cf.id}`)}
-                className="bg-card border border-border rounded-lg p-4 text-left hover:-translate-y-1 hover:shadow-lg hover:border-primary/30 transition-all duration-300"
               >
                 <div className="flex items-center gap-2 mb-2">
                   <Sparkles className="h-4 w-4 text-primary" />
@@ -137,7 +137,7 @@ export default function HomePage() {
                   )}
                 </div>
                 {cf.description && <p className="text-xs text-muted-foreground line-clamp-2">{cf.description}</p>}
-              </button>
+              </GlassCard>
             ))}
           </div>
         </div>
