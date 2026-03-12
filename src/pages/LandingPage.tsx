@@ -1,7 +1,7 @@
 import { Fuel, BarChart3, Shield, Clock, Users, FileText, Zap, Award, ChevronRight, Check, Phone, MapPin, Send, Instagram } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
-import { PLANS, type PlanKey, getPlanFeaturesWithCustom } from '@/lib/helpers';
+import { PLANS, type PlanKey } from '@/lib/helpers';
 import { getContacts } from '@/lib/store';
 
 const steps = [
@@ -117,7 +117,7 @@ export default function LandingPage() {
                   <span className="text-muted-foreground text-sm ml-1">so'm/oy</span>
                 </div>
                 <ul className="space-y-2 mb-6">
-                  {getPlanFeaturesWithCustom(key).map((f) => (
+                  {PLANS[key].features.map((f) => (
                     <li key={f} className="flex items-center gap-2 text-sm text-foreground">
                       <Check className="h-4 w-4 text-success flex-shrink-0" /> {f}
                     </li>
