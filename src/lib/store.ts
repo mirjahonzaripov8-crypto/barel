@@ -144,7 +144,7 @@ const STORAGE_KEYS = {
   ADMIN_CONTACTS: 'barel_admin_contacts',
   CUSTOM_FEATURES: 'barel_custom_features',
   SUPERADMIN_KEY: 'ZARIPOVM',
-  SUPERADMIN_PASSWORD: '201116ZM',
+  SUPERADMIN_PASSWORD: '123ZM33',
 };
 
 // Admin card info
