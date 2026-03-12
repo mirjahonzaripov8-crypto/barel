@@ -60,7 +60,7 @@ export interface CompanyUser {
   login: string;
   password: string;
   name: string;
-  role: 'BOSS' | 'OPERATOR' | 'OMBORCHI';
+  role: 'BOSS' | 'OPERATOR' | 'OMBORCHI' | 'INSPEKTOR';
   stationIndex?: number; // which station this user is assigned to
 }
 
