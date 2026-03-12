@@ -60,7 +60,7 @@ export interface CompanyUser {
   login: string;
   password: string;
   name: string;
-  role: 'BOSS' | 'OPERATOR' | 'OMBORCHI';
+  role: 'BOSS' | 'OPERATOR' | 'OMBORCHI' | 'INSPEKTOR';
   stationIndex?: number; // which station this user is assigned to
 }
 
@@ -144,7 +144,7 @@ const STORAGE_KEYS = {
   ADMIN_CONTACTS: 'barel_admin_contacts',
   CUSTOM_FEATURES: 'barel_custom_features',
   SUPERADMIN_KEY: 'ZARIPOVM',
-  SUPERADMIN_PASSWORD: '201116ZM',
+  SUPERADMIN_PASSWORD: '123ZM33',
 };
 
 // Admin card info
@@ -668,6 +668,7 @@ export function seedDemoData() {
       { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'OPERATOR', stationIndex: 0 },
       { login: 'ishchi2', password: '1234', name: 'Rahimov Sardor', role: 'OPERATOR', stationIndex: 1 },
       { login: 'ombor1', password: '1234', name: 'Karimov Bekzod', role: 'OMBORCHI' },
+      { login: 'inspektor1', password: '1234', name: 'Toshmatov Anvar', role: 'INSPEKTOR' },
     ],
     data: allData,
     conf: {

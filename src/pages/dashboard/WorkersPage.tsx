@@ -14,7 +14,7 @@ export default function WorkersPage() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'BOSS' | 'OPERATOR'>('OPERATOR');
+  const [role, setRole] = useState<'BOSS' | 'OPERATOR' | 'OMBORCHI' | 'INSPEKTOR'>('OPERATOR');
   const [logFrom, setLogFrom] = useState(getMonthAgoStr());
   const [logTo, setLogTo] = useState(getTodayStr());
   const [detailLog, setDetailLog] = useState<any>(null);
@@ -74,6 +74,8 @@ export default function WorkersPage() {
                 <select value={role} onChange={e => setRole(e.target.value as any)} className="mt-1 flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm">
                   <option value="BOSS">BOSS</option>
                   <option value="OPERATOR">Operator</option>
+                  <option value="OMBORCHI">Omborchi</option>
+                  <option value="INSPEKTOR">Inspektor</option>
                 </select>
               </div>
             )}
