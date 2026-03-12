@@ -71,11 +71,23 @@ export default function TelegramPage() {
   async function saveSettings() {
     setLoading(true);
     try {
-      // Save company users and fuel types for bot auth
+      // Save company users, fuel types, stations, and inventory for bot auth
+      const { getAggregatedFuelStats } = await import('@/lib/store');
+      const inventoryData: Record<string, any> = {};
+      company!.fuelTypes.forEach((ft, _) => {
+        // Get aggregated stats from station 0 as base
+        const stats = getAggregatedFuelStats(company!, 0);
+        const fuelStat = stats.find(s => s.name === ft.name);
+        if (fuelStat) {
+          inventoryData[ft.name] = { remaining: fuelStat.remaining, avgDaily: fuelStat.avgDaily, daysRemaining: fuelStat.daysRemaining };
+        }
+      });
       const companyData = {
         users: company!.users.map(u => ({ login: u.login, password: u.password, name: u.name, role: u.role })),
         fuelTypes: company!.fuelTypes.map(f => f.name),
         companyName: company!.name,
+        stations: company!.stations,
+        inventory: inventoryData,
       };
       const { error } = await supabase
         .from('telegram_settings')
