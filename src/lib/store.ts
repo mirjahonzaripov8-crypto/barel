@@ -668,6 +668,7 @@ export function seedDemoData() {
       { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'OPERATOR', stationIndex: 0 },
       { login: 'ishchi2', password: '1234', name: 'Rahimov Sardor', role: 'OPERATOR', stationIndex: 1 },
       { login: 'ombor1', password: '1234', name: 'Karimov Bekzod', role: 'OMBORCHI' },
+      { login: 'inspektor1', password: '1234', name: 'Toshmatov Anvar', role: 'INSPEKTOR' },
     ],
     data: allData,
     conf: {
