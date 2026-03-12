@@ -39,6 +39,7 @@ export default function DashboardLayout() {
 
   const isOperator = user?.role === 'OPERATOR';
   const isOmborchi = user?.role === 'OMBORCHI';
+  const isInspektor = user?.role === 'INSPEKTOR';
   
   const customFeatureItems = [
     ...getActiveFeaturesByPlan(plan),
@@ -50,15 +51,17 @@ export default function DashboardLayout() {
   }));
 
   const omborchiRoutes = ['/dashboard', '/dashboard/plomba'];
+  const inspektorRoutes = ['/dashboard', '/dashboard/plomba'];
 
   const navItems = [
     ...allNavItems.filter(item => {
       if (!isRouteAllowed(plan, item.path)) return false;
       if (isOperator && item.path !== '/dashboard/meter') return false;
       if (isOmborchi && !omborchiRoutes.includes(item.path)) return false;
+      if (isInspektor && !inspektorRoutes.includes(item.path)) return false;
       return true;
     }),
-    ...((isOperator || isOmborchi) ? [] : customFeatureItems),
+    ...((isOperator || isOmborchi || isInspektor) ? [] : customFeatureItems),
   ];
 
   useEffect(() => {
@@ -73,7 +76,10 @@ export default function DashboardLayout() {
     if (isOmborchi && !omborchiRoutes.includes(location.pathname)) {
       navigate('/dashboard');
     }
-  }, [location.pathname, plan, navigate, isOperator, isOmborchi]);
+    if (isInspektor && !inspektorRoutes.includes(location.pathname)) {
+      navigate('/dashboard');
+    }
+  }, [location.pathname, plan, navigate, isOperator, isOmborchi, isInspektor]);
 
   const handleLogout = () => { logout(); navigate('/'); };
   const isActive = (path: string) => location.pathname === path;
