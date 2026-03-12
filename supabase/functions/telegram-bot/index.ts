@@ -53,6 +53,8 @@ async function authenticateUser(supabase: any, login: string, password: string) 
     fuelTypes: cd.fuelTypes || [],
     stations: cd.stations || [],
     stationIndex: cd.stationIndex ?? 0,
+    stationConfigs: cd.stationConfigs || [],
+    inventory: cd.inventory || {},
   };
 }
 
@@ -98,7 +100,6 @@ Deno.serve(async (req) => {
         if (state === 'AWAITING_FUEL_TYPE') {
           if (cbData === 'fuel_done') {
             if (!sd.fuels || sd.fuels.length === 0) { await sendMessage(botToken, cbChatId, "❌ Kamida bitta yoqilg'i tanlang!"); return ok(); }
-            // Ask for each fuel price
             await upsertSession(supabase, cbChatId, { state: 'AWAITING_FUEL_PRICE_ALL', data: { ...sd, priceIdx: 0 } });
             await sendMessage(botToken, cbChatId, `💰 <b>${sd.fuels[0].type}</b> sotuv narxini kiriting (so'm):`);
             return ok();
@@ -125,7 +126,6 @@ Deno.serve(async (req) => {
         // === EXPENSE TYPE ===
         if (state === 'AWAITING_EXPENSES' && cbData.startsWith('exp_')) {
           if (cbData === 'exp_done') {
-            // Ask about prixod (incoming stock)
             await upsertSession(supabase, cbChatId, { state: 'AWAITING_PRIXOD_QUESTION', data: sd });
             await sendMessage(botToken, cbChatId, "📦 <b>Bugun kirim (prixod) bo'ldimi?</b>", {
               inline_keyboard: [
@@ -165,7 +165,6 @@ Deno.serve(async (req) => {
         // === PRIXOD FUEL SELECT ===
         if (state === 'AWAITING_PRIXOD_FUEL') {
           if (cbData === 'prixod_fuel_done') {
-            // Notify boss about prixods
             if (sd.bossChatId && (sd.prixodItems || []).length > 0) {
               let msg = `📦 <b>PRIXOD XABARI</b>\n\n🔧 Operator: ${sd.name || sd.login}\n🏢 ${sd.companyName}\n\n`;
               for (const p of sd.prixodItems) msg += `⛽ ${p.fuel}: ${numFmt(p.amount)} L\n`;
@@ -191,13 +190,19 @@ Deno.serve(async (req) => {
         // === CONFIRMATION ===
         if (state === 'AWAITING_CONFIRMATION') {
           if (cbData === 'confirm_yes') {
-            // Mark as confirmed, start 15-min edit window
             const newSd = { ...sd, confirmedAt: new Date().toISOString() };
             await sendReportToBoss(botToken, supabase, cbChatId, newSd);
             return ok();
           }
           if (cbData === 'confirm_edit') {
-            // Allow editing within 15 min
+            // Check 15-min edit window
+            if (sd.confirmedAt) {
+              const elapsed = Date.now() - new Date(sd.confirmedAt).getTime();
+              if (elapsed > 15 * 60 * 1000) {
+                await sendMessage(botToken, cbChatId, "⏰ 15 daqiqalik tahrirlash oynasi tugadi!");
+                return ok();
+              }
+            }
             await upsertSession(supabase, cbChatId, { state: 'AWAITING_EDIT_CHOICE', data: sd });
             await sendMessage(botToken, cbChatId, "✏️ Nimani tahrirlaysiz?", {
               inline_keyboard: [
@@ -212,7 +217,7 @@ Deno.serve(async (req) => {
           if (cbData === 'confirm_no') {
             await upsertSession(supabase, cbChatId, {
               state: 'AUTHENTICATED',
-              data: { login: sd.login, companyKey: sd.companyKey, bossChatId: sd.bossChatId, fuelTypes: sd.fuelTypes, companyName: sd.companyName, name: sd.name, role: sd.role, stations: sd.stations },
+              data: { login: sd.login, companyKey: sd.companyKey, bossChatId: sd.bossChatId, fuelTypes: sd.fuelTypes, companyName: sd.companyName, name: sd.name, role: sd.role, stations: sd.stations, stationIndex: sd.stationIndex },
             });
             await sendMessage(botToken, cbChatId, '❌ Bekor qilindi.', { inline_keyboard: [[{ text: "📊 Qaytadan kiritish", callback_data: 'menu_kiritish' }]] });
             return ok();
@@ -229,6 +234,10 @@ Deno.serve(async (req) => {
           if (cbData === 'edit_expenses') {
             await upsertSession(supabase, cbChatId, { state: 'AWAITING_EXPENSES', data: { ...sd, expenses: [] } });
             await showExpenseMenu(botToken, cbChatId, { ...sd, expenses: [] });
+            return ok();
+          }
+          if (cbData === 'edit_fuels') {
+            await startDataEntry(botToken, supabase, cbChatId, sd);
             return ok();
           }
           if (cbData === 'confirm_cancel') {
@@ -251,26 +260,39 @@ Deno.serve(async (req) => {
         // === BOSS STATION SELECTION ===
         if (cbData.startsWith('boss_station_')) {
           const parts = cbData.replace('boss_station_', '').split('_');
-          const type = parts[0]; // foyda, savdo, xarajat, ombor
+          const type = parts[0];
           const stationPart = parts.slice(1).join('_');
           const stationFilter = stationPart === 'all' ? 'all' : parseInt(stationPart);
           
+          if (type === 'ombor') {
+            // Show inventory data
+            const inv = sd.inventory || {};
+            const stationName = stationFilter === 'all' ? 'Barcha zapravkalar' : (sd.stations || [])[stationFilter as number] || 'Zapravka';
+            let msg = `📦 <b>OMBOR HOLATI</b>\n\n🏢 ${stationName}\n\n`;
+            const fuelTypes = sd.fuelTypes || [];
+            for (const ft of fuelTypes) {
+              const stock = inv[ft] || { remaining: 0, avgDaily: 0, daysRemaining: 0 };
+              const icon = stock.daysRemaining <= 2 ? '🔴' : stock.daysRemaining <= 4 ? '🟡' : '🟢';
+              msg += `${icon} <b>${ft}</b>\n`;
+              msg += `   Qoldiq: ${numFmt(stock.remaining)} L\n`;
+              msg += `   O'rtacha/kun: ${numFmt(stock.avgDaily)} L\n`;
+              msg += `   Yetishi: ${stock.daysRemaining} kun\n\n`;
+            }
+            await sendMessage(botToken, cbChatId, msg);
+            await showBossMenu(botToken, cbChatId);
+            return ok();
+          }
+
           await upsertSession(supabase, cbChatId, { state: 'BOSS_DATE_RANGE', data: { ...sd, bossType: type, bossStation: stationFilter } });
-          await sendMessage(botToken, cbChatId, type === 'ombor' 
-            ? "📦 Ombor ma'lumotlari yuklanmoqda..."
-            : "📅 Sana oralig'ini tanlang:", {
-            inline_keyboard: type === 'ombor' ? [] : [
+          await sendMessage(botToken, cbChatId, "📅 Sana oralig'ini tanlang:", {
+            inline_keyboard: [
               [{ text: "📅 Bugun", callback_data: 'boss_date_today' }],
               [{ text: "📅 Kecha", callback_data: 'boss_date_yesterday' }],
               [{ text: "📅 Hafta", callback_data: 'boss_date_week' }],
               [{ text: "📅 Oy", callback_data: 'boss_date_month' }],
+              [{ text: "📅 Yil", callback_data: 'boss_date_year' }],
             ],
           });
-          
-          if (type === 'ombor') {
-            // Show inventory immediately
-            await sendMessage(botToken, cbChatId, `📦 <b>OMBOR HOLATI</b>\n\n🏢 ${stationFilter === 'all' ? 'Barcha zapravkalar' : (sd.stations || [])[stationFilter as number] || 'Zapravka'}\n\n⚠️ Ombor ma'lumotlari web-saytda mavjud.\nOmbor qoldig'ini web-saytdan tekshiring.`);
-          }
           return ok();
         }
 
@@ -283,26 +305,57 @@ Deno.serve(async (req) => {
           else if (range === 'yesterday') { const y = new Date(now.getTime() - 86400000); fromDate = toDate = y.toISOString().split('T')[0]; }
           else if (range === 'week') { const w = new Date(now.getTime() - 7 * 86400000); fromDate = w.toISOString().split('T')[0]; }
           else if (range === 'month') { const m = new Date(now.getFullYear(), now.getMonth(), 1); fromDate = m.toISOString().split('T')[0]; }
+          else if (range === 'year') { const y = new Date(now.getFullYear(), 0, 1); fromDate = y.toISOString().split('T')[0]; }
           
           const type = sd.bossType;
           const station = sd.bossStation;
+          const stationName = station === 'all' ? 'Barcha zapravkalar' : (sd.stations || [])[station] || 'Zapravka';
           
-          let msg = `📊 <b>${type === 'foyda' ? 'FOYDA' : type === 'savdo' ? 'SOTUV' : 'XARAJATLAR'} HISOBOTI</b>\n\n`;
-          msg += `📅 ${fromDate} — ${toDate}\n`;
-          msg += `🏢 ${station === 'all' ? 'Barcha zapravkalar' : (sd.stations || [])[station] || 'Zapravka'}\n\n`;
-          msg += `⚠️ Batafsil ma'lumotlar web-saytda mavjud.\nhttps://barel.lovable.app`;
+          let msg = '';
+          if (type === 'foyda') {
+            msg = `💰 <b>FOYDA HISOBOTI</b>\n\n📅 ${fromDate} — ${toDate}\n🏢 ${stationName}\n\n`;
+            msg += `⚠️ Batafsil ma'lumotlar web-saytda mavjud.\nhttps://barel.lovable.app`;
+          } else if (type === 'savdo') {
+            msg = `📊 <b>SOTUV HISOBOTI</b>\n\n📅 ${fromDate} — ${toDate}\n🏢 ${stationName}\n\n`;
+            msg += `⚠️ Batafsil ma'lumotlar web-saytda mavjud.\nhttps://barel.lovable.app`;
+          } else if (type === 'xarajat') {
+            msg = `💸 <b>XARAJATLAR HISOBOTI</b>\n\n📅 ${fromDate} — ${toDate}\n🏢 ${stationName}\n\n`;
+            msg += `⚠️ Batafsil ma'lumotlar web-saytda mavjud.\nhttps://barel.lovable.app`;
+          }
           
           await sendMessage(botToken, cbChatId, msg);
-          
-          // Return to boss menu
-          await sendMessage(botToken, cbChatId, "📋 Yana nima ko'rmoqchisiz?", {
-            inline_keyboard: [
-              [{ text: "💰 Foydani ko'rish", callback_data: 'boss_foyda' }],
-              [{ text: "📊 Savdoni ko'rish", callback_data: 'boss_savdo' }],
-              [{ text: "💸 Xarajatlarni ko'rish", callback_data: 'boss_xarajat' }],
-              [{ text: "📦 Omborni ko'rish", callback_data: 'boss_ombor' }],
-            ],
-          });
+          await showBossMenu(botToken, cbChatId);
+          return ok();
+        }
+
+        // === INSPEKTOR CALLBACKS ===
+        if (cbData === 'inspektor_ombor') {
+          const stations = sd.stations || ['Zapravka 1'];
+          const buttons = stations.map((s: string, i: number) => [{ text: `🏢 ${s}`, callback_data: `inspektor_view_${i}` }]);
+          await sendMessage(botToken, cbChatId, "📦 Qaysi zapravkani ko'rmoqchisiz?", { inline_keyboard: buttons });
+          return ok();
+        }
+        if (cbData.startsWith('inspektor_view_')) {
+          const idx = parseInt(cbData.replace('inspektor_view_', ''));
+          const stationName = (sd.stations || [])[idx] || 'Zapravka';
+          const inv = sd.inventory || {};
+          const fuelTypes = sd.fuelTypes || [];
+          let msg = `📦 <b>${stationName} — OMBOR</b>\n\n`;
+          for (const ft of fuelTypes) {
+            const stock = inv[ft] || { remaining: 0, avgDaily: 0, daysRemaining: 0 };
+            const icon = stock.daysRemaining <= 2 ? '🔴' : stock.daysRemaining <= 4 ? '🟡' : '🟢';
+            msg += `${icon} <b>${ft}</b>\n`;
+            msg += `   Qoldiq: ${numFmt(stock.remaining)} L\n`;
+            msg += `   O'rtacha/kun: ${numFmt(stock.avgDaily)} L\n`;
+            msg += `   Yetishi: ${stock.daysRemaining} kun\n\n`;
+          }
+          await sendMessage(botToken, cbChatId, msg);
+          await showInspektorMenu(botToken, cbChatId);
+          return ok();
+        }
+        if (cbData === 'inspektor_plomba') {
+          await sendMessage(botToken, cbChatId, "🔒 <b>PLOMBA BOSHQARUVI</b>\n\nPlomba qo'shish yoki o'chirish uchun web-saytga kiring:\nhttps://barel.lovable.app");
+          await showInspektorMenu(botToken, cbChatId);
           return ok();
         }
 
@@ -316,7 +369,18 @@ Deno.serve(async (req) => {
         if (cbData.startsWith('omborchi_view_')) {
           const idx = parseInt(cbData.replace('omborchi_view_', ''));
           const stationName = (sd.stations || [])[idx] || 'Zapravka';
-          await sendMessage(botToken, cbChatId, `📦 <b>${stationName} — OMBOR</b>\n\n⚠️ Ombor qoldig'ini web-saytdan tekshiring.\nhttps://barel.lovable.app`);
+          const inv = sd.inventory || {};
+          const fuelTypes = sd.fuelTypes || [];
+          let msg = `📦 <b>${stationName} — OMBOR</b>\n\n`;
+          for (const ft of fuelTypes) {
+            const stock = inv[ft] || { remaining: 0, avgDaily: 0, daysRemaining: 0 };
+            const icon = stock.daysRemaining <= 2 ? '🔴' : stock.daysRemaining <= 4 ? '🟡' : '🟢';
+            msg += `${icon} <b>${ft}</b>\n`;
+            msg += `   Qoldiq: ${numFmt(stock.remaining)} L\n`;
+            msg += `   O'rtacha/kun: ${numFmt(stock.avgDaily)} L\n`;
+            msg += `   Yetishi: ${stock.daysRemaining} kun\n\n`;
+          }
+          await sendMessage(botToken, cbChatId, msg);
           return ok();
         }
         if (cbData === 'omborchi_plomba') {
@@ -345,9 +409,8 @@ Deno.serve(async (req) => {
         // /start
         if (text === '/start') {
           await deleteSession(supabase, chatId);
-          // Check if already authenticated (boss who set chat_id)
           await sendMessage(botToken, chatId,
-            `👋 Salom, ${firstName}!\n\n🤖 <b>BAREL.uz</b> botiga xush kelibsiz!\n\n📋 Chat ID: <code>${chatId}</code>\n\n👆 Boss: Bu raqamni Telegram sozlamalariga kiriting.\n🔧 Operator/Omborchi: Quyidagi tugmani bosing.`,
+            `👋 Salom, ${firstName}!\n\n🤖 <b>BAREL.uz</b> botiga xush kelibsiz!\n\n📋 Chat ID: <code>${chatId}</code>\n\n👆 Boss: Bu raqamni Telegram sozlamalariga kiriting.\n🔧 Operator/Inspektor: Quyidagi tugmani bosing.`,
             { inline_keyboard: [[{ text: '🔑 Kirish (Login)', callback_data: 'menu_login' }]] }
           );
           return ok();
@@ -389,6 +452,7 @@ Deno.serve(async (req) => {
             companyName: authResult.companyName,
             stations: authResult.stations,
             stationIndex: authResult.stationIndex,
+            inventory: authResult.inventory,
           };
 
           await upsertSession(supabase, chatId, {
@@ -409,6 +473,14 @@ Deno.serve(async (req) => {
                 [{ text: "📊 Savdoni ko'rish", callback_data: 'boss_savdo' }],
                 [{ text: "💸 Xarajatlarni ko'rish", callback_data: 'boss_xarajat' }],
                 [{ text: "📦 Omborni ko'rish", callback_data: 'boss_ombor' }],
+              ]}
+            );
+          } else if (role === 'INSPEKTOR') {
+            await sendMessage(botToken, chatId,
+              `✅ Xush kelibsiz, <b>${authResult.user.name}</b>!\n🏢 ${authResult.companyName}\n🔍 Ombor inspektori`,
+              { inline_keyboard: [
+                [{ text: "📦 Omborni ko'rish", callback_data: 'inspektor_ombor' }],
+                [{ text: "🔒 Plomba boshqarish", callback_data: 'inspektor_plomba' }],
               ]}
             );
           } else if (role === 'OMBORCHI') {
@@ -434,14 +506,12 @@ Deno.serve(async (req) => {
           const val = parseFloat(text);
           if (isNaN(val)) { await sendMessage(botToken, chatId, '❌ Raqam kiriting!'); return ok(); }
 
-          // Check if this is first time (no previous data) - ask for initial start meter
           if (!sd.initialStartSet && !sd.startValues) {
             await upsertSession(supabase, chatId, { state: 'AWAITING_START_VALUE', data: { ...sd, currentEnd: val } });
             await sendMessage(botToken, chatId, `📊 <b>${sd.currentFuel}</b> — Boshlang'ich hisoblagich (start) qiymatini kiriting:`);
             return ok();
           }
 
-          // Normal flow - just save end and ask for prixod
           await upsertSession(supabase, chatId, { state: 'AWAITING_PRIXOD', data: { ...sd, currentEnd: val } });
           await sendMessage(botToken, chatId, `📦 <b>${sd.currentFuel}</b> prixod miqdori:`, {
             inline_keyboard: [[{ text: "0️⃣ Prixod yo'q", callback_data: 'prixod_0' }]],
@@ -483,10 +553,9 @@ Deno.serve(async (req) => {
           fuels[idx] = { ...fuels[idx], price: val };
           
           if (idx + 1 < fuels.length) {
-            await upsertSession(supabase, cbChatId || chatId, { state: 'AWAITING_FUEL_PRICE_ALL', data: { ...sd, fuels, priceIdx: idx + 1 } });
+            await upsertSession(supabase, chatId, { state: 'AWAITING_FUEL_PRICE_ALL', data: { ...sd, fuels, priceIdx: idx + 1 } });
             await sendMessage(botToken, chatId, `💰 <b>${fuels[idx + 1].type}</b> sotuv narxini kiriting (so'm):`);
           } else {
-            // All prices collected, go to terminal
             await upsertSession(supabase, chatId, { state: 'AWAITING_TERMINAL', data: { ...sd, fuels } });
             await sendMessage(botToken, chatId, "💳 <b>Terminal summasini kiriting:</b>", {
               inline_keyboard: [
@@ -576,14 +645,9 @@ Deno.serve(async (req) => {
         if (state === 'AUTHENTICATED') {
           const role = sd.role || 'OPERATOR';
           if (role === 'BOSS') {
-            await sendMessage(botToken, chatId, "📋 Quyidagi tugmalardan foydalaning:", {
-              inline_keyboard: [
-                [{ text: "💰 Foydani ko'rish", callback_data: 'boss_foyda' }],
-                [{ text: "📊 Savdoni ko'rish", callback_data: 'boss_savdo' }],
-                [{ text: "💸 Xarajatlarni ko'rish", callback_data: 'boss_xarajat' }],
-                [{ text: "📦 Omborni ko'rish", callback_data: 'boss_ombor' }],
-              ],
-            });
+            await showBossMenu(botToken, chatId);
+          } else if (role === 'INSPEKTOR') {
+            await showInspektorMenu(botToken, chatId);
           } else if (role === 'OMBORCHI') {
             await sendMessage(botToken, chatId, "📋 Quyidagi tugmalardan foydalaning:", {
               inline_keyboard: [
@@ -658,6 +722,20 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: data.ok }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
+    if (action === 'stock_alert') {
+      // Automated stock alert
+      const { alerts } = body;
+      if (!chat_id || !alerts) return new Response(JSON.stringify({ error: 'Missing data' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      let text = `⚠️ <b>OMBOR OGOHLANTIRISHI</b>\n\n`;
+      for (const a of alerts) {
+        const icon = a.level === 'red' ? '🔴' : '🟡';
+        text += `${icon} <b>${a.fuel}</b>: ${a.remaining} L qoldi (${a.daysRemaining} kun)\n`;
+      }
+      text += `\n🤖 BAREL.uz avtomatik ogohlantirish`;
+      await sendMessage(botToken, chat_id, text);
+      return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
     return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
   } catch (err) {
     console.error('Error:', err);
@@ -669,6 +747,26 @@ Deno.serve(async (req) => {
 
 function ok() {
   return new Response(JSON.stringify({ ok: true }), { headers: { 'Content-Type': 'application/json' } });
+}
+
+async function showBossMenu(botToken: string, chatId: string) {
+  await sendMessage(botToken, chatId, "📋 Yana nima ko'rmoqchisiz?", {
+    inline_keyboard: [
+      [{ text: "💰 Foydani ko'rish", callback_data: 'boss_foyda' }],
+      [{ text: "📊 Savdoni ko'rish", callback_data: 'boss_savdo' }],
+      [{ text: "💸 Xarajatlarni ko'rish", callback_data: 'boss_xarajat' }],
+      [{ text: "📦 Omborni ko'rish", callback_data: 'boss_ombor' }],
+    ],
+  });
+}
+
+async function showInspektorMenu(botToken: string, chatId: string) {
+  await sendMessage(botToken, chatId, "📋 Quyidagi tugmalardan foydalaning:", {
+    inline_keyboard: [
+      [{ text: "📦 Omborni ko'rish", callback_data: 'inspektor_ombor' }],
+      [{ text: "🔒 Plomba boshqarish", callback_data: 'inspektor_plomba' }],
+    ],
+  });
 }
 
 async function startDataEntry(botToken: string, supabase: any, chatId: string, sd: any) {
@@ -746,6 +844,10 @@ async function showConfirmation(botToken: string, supabase: any, chatId: string,
   const naqdPul = totalSales - terminalVal - totalExp;
   summary += `\n💵 <b>Naqd pul: ${numFmt(naqdPul)} so'm</b>`;
 
+  // Profit margin
+  const profitMargin = totalSales > 0 ? ((totalSales - totalExp) / totalSales * 100).toFixed(1) : '0.0';
+  summary += `\n📈 Foyda marjasi: <b>${profitMargin}%</b>`;
+
   await upsertSession(supabase, chatId, { state: 'AWAITING_CONFIRMATION', data: { ...sd, totalSales, totalExp, naqdPul } });
   await sendMessage(botToken, chatId, summary, {
     inline_keyboard: [
@@ -794,8 +896,10 @@ async function sendReportToBoss(botToken: string, supabase: any, chatId: string,
 
   const naqdPul = totalSales - terminalVal - totalExp;
   const foyda = totalSales - totalExp;
+  const profitMargin = totalSales > 0 ? (foyda / totalSales * 100).toFixed(1) : '0.0';
   report += `\n💵 Naqd pul: <b>${numFmt(naqdPul)} so'm</b>\n`;
   report += `📈 Foyda: <b>${numFmt(foyda)} so'm</b>\n`;
+  report += `📊 Foyda marjasi: <b>${profitMargin}%</b>\n`;
   report += `\n✅ Operator tasdiqladi\n🤖 BAREL.uz`;
 
   await sendMessage(botToken, bossChatId, report, {
@@ -805,7 +909,7 @@ async function sendReportToBoss(botToken: string, supabase: any, chatId: string,
   // Reset to authenticated
   await upsertSession(supabase, chatId, {
     state: 'AUTHENTICATED',
-    data: { login: sd.login, companyKey: sd.companyKey, bossChatId: sd.bossChatId, fuelTypes: sd.fuelTypes, companyName: sd.companyName, name: sd.name, role: sd.role, stations: sd.stations, stationIndex: sd.stationIndex },
+    data: { login: sd.login, companyKey: sd.companyKey, bossChatId: sd.bossChatId, fuelTypes: sd.fuelTypes, companyName: sd.companyName, name: sd.name, role: sd.role, stations: sd.stations, stationIndex: sd.stationIndex, inventory: sd.inventory },
   });
   await sendMessage(botToken, chatId, "✅ Ma'lumotlar Boss ga yuborildi! ⏱️ 15 daqiqa ichida tahrirlash mumkin.", {
     inline_keyboard: [[{ text: '📊 Yangi kiritish', callback_data: 'menu_kiritish' }]],
