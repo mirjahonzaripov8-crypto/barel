@@ -1,80 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateCompany, addLog } from '@/lib/store';
-import { getTodayStr, formatDate } from '@/lib/helpers';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { updateCompany, addLog, type PlombaRecord } from '@/lib/store';
+import { formatDateTime } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
-import { Lock, Plus, Trash2, Edit, X, Check } from 'lucide-react';
+import { Lock, Trash2, Play, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import GlassCard from '@/components/GlassCard';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function PlombaPage() {
   const { company, user, refreshCompany } = useAuth();
-  const [date, setDate] = useState(getTodayStr());
-  const [numbers, setNumbers] = useState<string[]>(['']);
-  const [editingIdx, setEditingIdx] = useState<number | null>(null);
-  const [editNumbers, setEditNumbers] = useState<string[]>([]);
+  const [cloudPlomba, setCloudPlomba] = useState<PlombaRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch plomba records from cloud (telegram_settings)
+  const fetchCloudPlomba = async () => {
+    if (!company) return;
+    setLoading(true);
+    try {
+      const { data } = await supabase.from('telegram_settings')
+        .select('company_data')
+        .eq('company_key', company.key)
+        .maybeSingle();
+      const plomba = (data?.company_data as any)?.plomba || [];
+      setCloudPlomba(plomba);
+    } catch (err) {
+      console.error('Failed to fetch cloud plomba:', err);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchCloudPlomba(); }, [company?.key]);
 
   if (!company) return null;
 
-  const addNumber = () => setNumbers([...numbers, '']);
-  const removeNumber = (i: number) => { if (numbers.length <= 1) return; setNumbers(numbers.filter((_, idx) => idx !== i)); };
-  const updateNumber = (i: number, v: string) => { const n = [...numbers]; n[i] = v; setNumbers(n); };
+  // Merge local and cloud plomba records, deduplicate by date
+  const allPlomba: PlombaRecord[] = [...company.plomba];
+  for (const cp of cloudPlomba) {
+    const exists = allPlomba.some(p => p.date === cp.date && p.newPlombaNumber === cp.newPlombaNumber);
+    if (!exists) allPlomba.push(cp);
+  }
+  allPlomba.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-  // Check if plomba is within 10-min edit window
   const canEdit = (plomba: { date: string }) => {
     const created = new Date(plomba.date).getTime();
-    const now = Date.now();
-    return (now - created) < 10 * 60 * 1000; // 10 daqiqa
-  };
-
-  const save = () => {
-    const valid = numbers.filter(n => n.trim());
-    if (!date || valid.length === 0) { toast.error("Sana va kamida bitta raqam kiriting!"); return; }
-    updateCompany(company.key, c => ({
-      ...c,
-      plomba: [...c.plomba, { date: new Date().toISOString(), numbers: valid, status: 'Yaxshi' }],
-    }));
-    addLog(company.key, user?.login || '', 'Plomba', `${valid.length} ta plomba saqlandi`);
-    refreshCompany();
-    setNumbers(['']);
-    toast.success("Plomba saqlandi!");
-  };
-
-  const startEdit = (idx: number) => {
-    const realIdx = company.plomba.length - 1 - idx;
-    const p = company.plomba[realIdx];
-    if (!canEdit(p)) { toast.error("10 daqiqa o'tdi, tahrirlash mumkin emas!"); return; }
-    setEditingIdx(idx);
-    setEditNumbers([...p.numbers]);
-  };
-
-  const saveEdit = () => {
-    if (editingIdx === null) return;
-    const realIdx = company.plomba.length - 1 - editingIdx;
-    const valid = editNumbers.filter(n => n.trim());
-    if (valid.length === 0) { toast.error("Kamida bitta raqam kiriting!"); return; }
-    updateCompany(company.key, c => {
-      const plomba = [...c.plomba];
-      plomba[realIdx] = { ...plomba[realIdx], numbers: valid };
-      return { ...c, plomba };
-    });
-    addLog(company.key, user?.login || '', 'Plomba', 'Plomba tahrirlandi');
-    refreshCompany();
-    setEditingIdx(null);
-    toast.success("Plomba tahrirlandi!");
+    return (Date.now() - created) < 10 * 60 * 1000;
   };
 
   const deletePlomba = (idx: number) => {
-    const realIdx = company.plomba.length - 1 - idx;
-    const p = company.plomba[realIdx];
+    const p = allPlomba[idx];
     if (!canEdit(p)) { toast.error("10 daqiqa o'tdi, o'chirish mumkin emas!"); return; }
-    updateCompany(company.key, c => {
-      const plomba = [...c.plomba];
-      plomba.splice(realIdx, 1);
-      return { ...c, plomba };
-    });
+    
+    // Check if it's a local record
+    const localIdx = company.plomba.findIndex(lp => lp.date === p.date);
+    if (localIdx >= 0) {
+      updateCompany(company.key, c => {
+        const plomba = [...c.plomba];
+        plomba.splice(localIdx, 1);
+        return { ...c, plomba };
+      });
+    }
+    
     addLog(company.key, user?.login || '', 'Plomba', "Plomba o'chirildi");
     refreshCompany();
     toast.success("Plomba o'chirildi!");
@@ -82,78 +68,102 @@ export default function PlombaPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-6">PLOMBA NAZORATI</h1>
-      <div className="grid lg:grid-cols-2 gap-6">
-        <GlassCard>
-          <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2"><Lock className="h-4 w-4 text-primary" /> Yangi plomba</h3>
-          <div className="mb-4"><Label className="text-xs">Sana</Label><Input type="date" value={date} onChange={e => setDate(e.target.value)} className="mt-1 w-44" /></div>
-          <div className="space-y-2 mb-4">
-            {numbers.map((n, i) => (
-              <div key={i} className="flex gap-2">
-                <Input value={n} onChange={e => updateNumber(i, e.target.value)} placeholder={`Raqam ${i+1}`} />
-                {numbers.length > 1 && <Button variant="ghost" size="icon" onClick={() => removeNumber(i)} className="text-destructive shrink-0"><Trash2 className="h-4 w-4" /></Button>}
-              </div>
-            ))}
-            <Button variant="outline" size="sm" onClick={addNumber}><Plus className="h-3 w-3 mr-1" /> Raqam qo'shish</Button>
-          </div>
-          <Button onClick={save} className="w-full btn-glow">SAQLASH</Button>
-        </GlassCard>
-
-        <GlassCard>
-          <h3 className="font-semibold text-foreground mb-4">Tarix va nazorat</h3>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border/50">
-                  <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Sana</th>
-                  <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Raqamlar</th>
-                  <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Holat</th>
-                  <th className="text-right py-2 px-2 text-muted-foreground font-medium text-xs">Amallar</th>
-                </tr>
-              </thead>
-              <tbody>
-                {company.plomba.length === 0 ? (
-                  <tr><td colSpan={4} className="py-6 text-center text-muted-foreground">Ma'lumot yo'q</td></tr>
-                ) : company.plomba.slice().reverse().map((p, i) => {
-                  const editable = canEdit(p);
-                  const isEditing = editingIdx === i;
-                  return (
-                    <tr key={i} className="border-b border-border/30 table-row-hover">
-                      <td className="py-2 px-2 text-xs">{formatDate(p.date)}</td>
-                      <td className="py-2 px-2">
-                        {isEditing ? (
-                          <div className="space-y-1">
-                            {editNumbers.map((n, ni) => (
-                              <Input key={ni} value={n} onChange={e => { const en = [...editNumbers]; en[ni] = e.target.value; setEditNumbers(en); }} className="h-7 text-xs" />
-                            ))}
-                          </div>
-                        ) : p.numbers.join(', ')}
-                      </td>
-                      <td className="py-2 px-2"><span className="bg-success/10 text-success text-xs px-2 py-0.5 rounded-md">{p.status}</span></td>
-                      <td className="py-2 px-2 text-right">
-                        {editable && !isEditing && (
-                          <div className="flex gap-1 justify-end">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => startEdit(i)}><Edit className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deletePlomba(i)}><Trash2 className="h-3 w-3" /></Button>
-                          </div>
-                        )}
-                        {isEditing && (
-                          <div className="flex gap-1 justify-end">
-                            <Button variant="ghost" size="icon" className="h-7 w-7 text-success" onClick={saveEdit}><Check className="h-3 w-3" /></Button>
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingIdx(null)}><X className="h-3 w-3" /></Button>
-                          </div>
-                        )}
-                        {!editable && <span className="text-xs text-muted-foreground">🔒</span>}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-          <p className="text-xs text-muted-foreground mt-3">⏱️ Plomba kiritilgandan so'ng faqat 10 daqiqa ichida tahrirlash mumkin</p>
-        </GlassCard>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-foreground">PLOMBA NAZORATI</h1>
+        <Button variant="outline" size="sm" onClick={fetchCloudPlomba} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} /> Yangilash
+        </Button>
       </div>
+
+      <GlassCard>
+        <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
+          <Lock className="h-4 w-4 text-primary" /> Plomba tarixi
+        </h3>
+        <p className="text-sm text-muted-foreground mb-4">
+          📱 Plomba almashtirish Telegram bot orqali amalga oshiriladi (Omborchi roli).
+          <br />Jarayon: Eski plomba raqami → Uzish videosi → Yangi plomba raqami → O'rnatish rasmi
+        </p>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/50">
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Sana</th>
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Eski plomba</th>
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Yangi plomba</th>
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Kim</th>
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Media</th>
+                <th className="text-left py-2 px-2 text-muted-foreground font-medium text-xs">Holat</th>
+                <th className="text-right py-2 px-2 text-muted-foreground font-medium text-xs">Amallar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {allPlomba.length === 0 ? (
+                <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">Ma'lumot yo'q</td></tr>
+              ) : allPlomba.map((p, i) => {
+                const editable = canEdit(p);
+                const hasNewFlow = !!p.oldPlombaNumber || !!p.newPlombaNumber;
+                return (
+                  <tr key={i} className="border-b border-border/30 hover:bg-secondary/20 transition-colors">
+                    <td className="py-3 px-2 text-xs">{formatDateTime(p.date)}</td>
+                    <td className="py-3 px-2">
+                      {hasNewFlow ? (
+                        <span className="text-destructive font-medium">#{p.oldPlombaNumber}</span>
+                      ) : (
+                        <span className="text-muted-foreground">—</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-2">
+                      {hasNewFlow ? (
+                        <span className="text-green-600 dark:text-green-400 font-medium">#{p.newPlombaNumber}</span>
+                      ) : (
+                        <span>{p.numbers.join(', ')}</span>
+                      )}
+                    </td>
+                    <td className="py-3 px-2 text-xs text-muted-foreground">{p.changedBy || '—'}</td>
+                    <td className="py-3 px-2">
+                      <div className="flex gap-1">
+                        {p.oldPlombaVideoUrl && (
+                          <a href={p.oldPlombaVideoUrl} target="_blank" rel="noopener noreferrer" 
+                             className="inline-flex items-center gap-1 text-xs bg-destructive/10 text-destructive px-2 py-1 rounded-md hover:bg-destructive/20 transition-colors">
+                            <Play className="h-3 w-3" /> Video
+                          </a>
+                        )}
+                        {p.newPlombaPhotoUrl && (
+                          <a href={p.newPlombaPhotoUrl} target="_blank" rel="noopener noreferrer"
+                             className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-md hover:bg-primary/20 transition-colors">
+                            <ImageIcon className="h-3 w-3" /> Rasm
+                          </a>
+                        )}
+                        {!p.oldPlombaVideoUrl && !p.newPlombaPhotoUrl && (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="py-3 px-2">
+                      <span className={`text-xs px-2 py-0.5 rounded-md ${
+                        p.status === 'Almashtirildi' 
+                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' 
+                          : 'bg-green-500/10 text-green-600 dark:text-green-400'
+                      }`}>{p.status}</span>
+                    </td>
+                    <td className="py-3 px-2 text-right">
+                      {editable ? (
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => deletePlomba(i)}>
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">🔒</span>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">⏱️ Plomba kiritilgandan so'ng faqat 10 daqiqa ichida o'chirish mumkin</p>
+      </GlassCard>
     </div>
   );
 }

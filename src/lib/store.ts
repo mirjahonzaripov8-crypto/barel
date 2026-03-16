@@ -60,7 +60,7 @@ export interface CompanyUser {
   login: string;
   password: string;
   name: string;
-  role: 'BOSS' | 'OPERATOR' | 'OMBORCHI' | 'INSPEKTOR';
+  role: 'BOSS' | 'OPERATOR' | 'OMBORCHI';
   stationIndex?: number; // which station this user is assigned to
 }
 
@@ -75,6 +75,12 @@ export interface PlombaRecord {
   date: string;
   numbers: string[];
   status: string;
+  // New fields for seal change flow
+  oldPlombaNumber?: string;
+  oldPlombaVideoUrl?: string; // video of breaking old seal
+  newPlombaNumber?: string;
+  newPlombaPhotoUrl?: string; // photo of installed new seal
+  changedBy?: string; // who changed the seal
 }
 
 export interface Payment {
@@ -668,7 +674,6 @@ export function seedDemoData() {
       { login: 'ishchi1', password: '1234', name: 'Aliyev Jasur', role: 'OPERATOR', stationIndex: 0 },
       { login: 'ishchi2', password: '1234', name: 'Rahimov Sardor', role: 'OPERATOR', stationIndex: 1 },
       { login: 'ombor1', password: '1234', name: 'Karimov Bekzod', role: 'OMBORCHI' },
-      { login: 'inspektor1', password: '1234', name: 'Toshmatov Anvar', role: 'INSPEKTOR' },
     ],
     data: allData,
     conf: {

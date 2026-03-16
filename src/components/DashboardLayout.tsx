@@ -39,7 +39,6 @@ export default function DashboardLayout() {
 
   const isOperator = user?.role === 'OPERATOR';
   const isOmborchi = user?.role === 'OMBORCHI';
-  const isInspektor = user?.role === 'INSPEKTOR';
   
   const customFeatureItems = [
     ...getActiveFeaturesByPlan(plan),
@@ -51,17 +50,15 @@ export default function DashboardLayout() {
   }));
 
   const omborchiRoutes = ['/dashboard', '/dashboard/plomba'];
-  const inspektorRoutes = ['/dashboard', '/dashboard/plomba'];
 
   const navItems = [
     ...allNavItems.filter(item => {
       if (!isRouteAllowed(plan, item.path)) return false;
       if (isOperator && item.path !== '/dashboard/meter') return false;
       if (isOmborchi && !omborchiRoutes.includes(item.path)) return false;
-      if (isInspektor && !inspektorRoutes.includes(item.path)) return false;
       return true;
     }),
-    ...((isOperator || isOmborchi || isInspektor) ? [] : customFeatureItems),
+    ...((isOperator || isOmborchi) ? [] : customFeatureItems),
   ];
 
   useEffect(() => {
@@ -76,10 +73,7 @@ export default function DashboardLayout() {
     if (isOmborchi && !omborchiRoutes.includes(location.pathname)) {
       navigate('/dashboard');
     }
-    if (isInspektor && !inspektorRoutes.includes(location.pathname)) {
-      navigate('/dashboard');
-    }
-  }, [location.pathname, plan, navigate, isOperator, isOmborchi, isInspektor]);
+  }, [location.pathname, plan, navigate, isOperator, isOmborchi]);
 
   const handleLogout = () => { logout(); navigate('/'); };
   const isActive = (path: string) => location.pathname === path;
@@ -209,7 +203,7 @@ export default function DashboardLayout() {
           <div className="flex items-center gap-2">
             <ReminderNotifications />
             <span className="hidden sm:inline text-xs text-muted-foreground">
-              {user?.role === 'BOSS' ? '👑 Boss' : user?.role === 'INSPEKTOR' ? '🔍 Inspektor' : user?.role === 'OMBORCHI' ? '📦 Omborchi' : '🔧 Operator'}
+              {user?.role === 'BOSS' ? '👑 Boss' : user?.role === 'OMBORCHI' ? '📦 Omborchi' : '🔧 Operator'}
             </span>
             <span className={cn("text-xs px-2 py-1 rounded-md font-medium", getPlanColor())}>
               {plan === 'PREMIUM' && <Crown className="h-3 w-3 inline mr-1" />}

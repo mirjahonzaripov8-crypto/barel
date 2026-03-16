@@ -58,6 +58,34 @@ async function authenticateUser(supabase: any, login: string, password: string) 
   };
 }
 
+// Download a file from Telegram and upload to Supabase storage
+async function downloadAndUploadFile(botToken: string, supabase: any, fileId: string, folder: string, ext: string): Promise<string> {
+  // Get file path from Telegram
+  const fileRes = await fetch(`${TELEGRAM_API}${botToken}/getFile`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ file_id: fileId }),
+  });
+  const fileData = await fileRes.json();
+  if (!fileData.ok) throw new Error('Failed to get file from Telegram');
+  const filePath = fileData.result.file_path;
+
+  // Download file
+  const downloadRes = await fetch(`https://api.telegram.org/file/bot${botToken}/${filePath}`);
+  if (!downloadRes.ok) throw new Error('Failed to download file');
+  const fileBytes = await downloadRes.arrayBuffer();
+
+  // Upload to Supabase storage
+  const fileName = `${folder}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+  const contentType = ext === 'mp4' ? 'video/mp4' : (ext === 'jpg' ? 'image/jpeg' : 'application/octet-stream');
+  
+  const { error } = await supabase.storage.from('plomba-media').upload(fileName, fileBytes, { contentType, upsert: true });
+  if (error) throw new Error(`Upload failed: ${error.message}`);
+
+  // Get public URL
+  const { data: urlData } = supabase.storage.from('plomba-media').getPublicUrl(fileName);
+  return urlData.publicUrl;
+}
+
 function numFmt(n: number): string {
   return n.toLocaleString('uz-UZ');
 }
@@ -195,7 +223,6 @@ Deno.serve(async (req) => {
             return ok();
           }
           if (cbData === 'confirm_edit') {
-            // Check 15-min edit window
             if (sd.confirmedAt) {
               const elapsed = Date.now() - new Date(sd.confirmedAt).getTime();
               if (elapsed > 15 * 60 * 1000) {
@@ -265,7 +292,6 @@ Deno.serve(async (req) => {
           const stationFilter = stationPart === 'all' ? 'all' : parseInt(stationPart);
           
           if (type === 'ombor') {
-            // Show inventory data
             const inv = sd.inventory || {};
             const stationName = stationFilter === 'all' ? 'Barcha zapravkalar' : (sd.stations || [])[stationFilter as number] || 'Zapravka';
             let msg = `📦 <b>OMBOR HOLATI</b>\n\n🏢 ${stationName}\n\n`;
@@ -328,37 +354,6 @@ Deno.serve(async (req) => {
           return ok();
         }
 
-        // === INSPEKTOR CALLBACKS ===
-        if (cbData === 'inspektor_ombor') {
-          const stations = sd.stations || ['Zapravka 1'];
-          const buttons = stations.map((s: string, i: number) => [{ text: `🏢 ${s}`, callback_data: `inspektor_view_${i}` }]);
-          await sendMessage(botToken, cbChatId, "📦 Qaysi zapravkani ko'rmoqchisiz?", { inline_keyboard: buttons });
-          return ok();
-        }
-        if (cbData.startsWith('inspektor_view_')) {
-          const idx = parseInt(cbData.replace('inspektor_view_', ''));
-          const stationName = (sd.stations || [])[idx] || 'Zapravka';
-          const inv = sd.inventory || {};
-          const fuelTypes = sd.fuelTypes || [];
-          let msg = `📦 <b>${stationName} — OMBOR</b>\n\n`;
-          for (const ft of fuelTypes) {
-            const stock = inv[ft] || { remaining: 0, avgDaily: 0, daysRemaining: 0 };
-            const icon = stock.daysRemaining <= 2 ? '🔴' : stock.daysRemaining <= 4 ? '🟡' : '🟢';
-            msg += `${icon} <b>${ft}</b>\n`;
-            msg += `   Qoldiq: ${numFmt(stock.remaining)} L\n`;
-            msg += `   O'rtacha/kun: ${numFmt(stock.avgDaily)} L\n`;
-            msg += `   Yetishi: ${stock.daysRemaining} kun\n\n`;
-          }
-          await sendMessage(botToken, cbChatId, msg);
-          await showInspektorMenu(botToken, cbChatId);
-          return ok();
-        }
-        if (cbData === 'inspektor_plomba') {
-          await sendMessage(botToken, cbChatId, "🔒 <b>PLOMBA BOSHQARUVI</b>\n\nPlomba qo'shish yoki o'chirish uchun web-saytga kiring:\nhttps://barel.lovable.app");
-          await showInspektorMenu(botToken, cbChatId);
-          return ok();
-        }
-
         // === OMBORCHI CALLBACKS ===
         if (cbData === 'omborchi_ombor') {
           const stations = sd.stations || ['Zapravka 1'];
@@ -381,10 +376,14 @@ Deno.serve(async (req) => {
             msg += `   Yetishi: ${stock.daysRemaining} kun\n\n`;
           }
           await sendMessage(botToken, cbChatId, msg);
+          await showOmborchiMenu(botToken, cbChatId);
           return ok();
         }
+
+        // === OMBORCHI PLOMBA FLOW ===
         if (cbData === 'omborchi_plomba') {
-          await sendMessage(botToken, cbChatId, "🔒 <b>PLOMBA BOSHQARUVI</b>\n\nPlomba qo'shish yoki o'chirish uchun web-saytga kiring:\nhttps://barel.lovable.app");
+          await upsertSession(supabase, cbChatId, { state: 'PLOMBA_OLD_NUMBER', data: sd });
+          await sendMessage(botToken, cbChatId, "🔒 <b>PLOMBA ALMASHTIRISH</b>\n\n📝 Eski plomba raqamini kiriting:");
           return ok();
         }
 
@@ -402,6 +401,8 @@ Deno.serve(async (req) => {
         const text = (update.message.text || '').trim();
         const firstName = update.message.from?.first_name || 'Foydalanuvchi';
         const photo = update.message.photo;
+        const video = update.message.video;
+        const videoNote = update.message.video_note;
         const session = await getSession(supabase, chatId);
         const state = session?.state || 'IDLE';
         const sd = session?.data || {};
@@ -410,7 +411,7 @@ Deno.serve(async (req) => {
         if (text === '/start') {
           await deleteSession(supabase, chatId);
           await sendMessage(botToken, chatId,
-            `👋 Salom, ${firstName}!\n\n🤖 <b>BAREL.uz</b> botiga xush kelibsiz!\n\n📋 Chat ID: <code>${chatId}</code>\n\n👆 Boss: Bu raqamni Telegram sozlamalariga kiriting.\n🔧 Operator/Inspektor: Quyidagi tugmani bosing.`,
+            `👋 Salom, ${firstName}!\n\n🤖 <b>BAREL.uz</b> botiga xush kelibsiz!\n\n📋 Chat ID: <code>${chatId}</code>\n\n👆 Boss: Bu raqamni Telegram sozlamalariga kiriting.\n🔧 Operator/Omborchi: Quyidagi tugmani bosing.`,
             { inline_keyboard: [[{ text: '🔑 Kirish (Login)', callback_data: 'menu_login' }]] }
           );
           return ok();
@@ -475,20 +476,12 @@ Deno.serve(async (req) => {
                 [{ text: "📦 Omborni ko'rish", callback_data: 'boss_ombor' }],
               ]}
             );
-          } else if (role === 'INSPEKTOR') {
-            await sendMessage(botToken, chatId,
-              `✅ Xush kelibsiz, <b>${authResult.user.name}</b>!\n🏢 ${authResult.companyName}\n🔍 Ombor inspektori`,
-              { inline_keyboard: [
-                [{ text: "📦 Omborni ko'rish", callback_data: 'inspektor_ombor' }],
-                [{ text: "🔒 Plomba boshqarish", callback_data: 'inspektor_plomba' }],
-              ]}
-            );
           } else if (role === 'OMBORCHI') {
             await sendMessage(botToken, chatId,
-              `✅ Xush kelibsiz, <b>${authResult.user.name}</b>!\n🏢 ${authResult.companyName}\n📦 Ombor nazoratchisi`,
+              `✅ Xush kelibsiz, <b>${authResult.user.name}</b>!\n🏢 ${authResult.companyName}\n📦 Omborchi`,
               { inline_keyboard: [
                 [{ text: "📦 Omborni ko'rish", callback_data: 'omborchi_ombor' }],
-                [{ text: "🔒 Plomba", callback_data: 'omborchi_plomba' }],
+                [{ text: "🔒 Plomba almashtirish", callback_data: 'omborchi_plomba' }],
               ]}
             );
           } else {
@@ -497,6 +490,118 @@ Deno.serve(async (req) => {
               `✅ Xush kelibsiz, <b>${authResult.user.name}</b>!\n⛽ Siz <b>${stationName}</b> zapravkasiga kirdingiz.`,
               { inline_keyboard: [[{ text: "📊 Ma'lumot kiritish", callback_data: 'menu_kiritish' }]] }
             );
+          }
+          return ok();
+        }
+
+        // ===== PLOMBA FLOW FOR OMBORCHI =====
+
+        // Step 1: Old plomba number
+        if (state === 'PLOMBA_OLD_NUMBER') {
+          if (!text) { await sendMessage(botToken, chatId, "❌ Plomba raqamini kiriting!"); return ok(); }
+          await upsertSession(supabase, chatId, { state: 'PLOMBA_OLD_VIDEO', data: { ...sd, oldPlombaNumber: text } });
+          await sendMessage(botToken, chatId, `✅ Eski plomba: <b>#${text}</b>\n\n📹 Endi plombani uzish <b>videosini</b> yuboring:`);
+          return ok();
+        }
+
+        // Step 2: Old plomba breaking video
+        if (state === 'PLOMBA_OLD_VIDEO') {
+          const videoFileId = video?.file_id || videoNote?.file_id;
+          if (!videoFileId) { await sendMessage(botToken, chatId, "❌ Video yuboring! (plombani uzish jarayoni)"); return ok(); }
+          
+          try {
+            await sendMessage(botToken, chatId, "⏳ Video yuklanmoqda...");
+            const videoUrl = await downloadAndUploadFile(botToken, supabase, videoFileId, 'old-plomba-videos', 'mp4');
+            await upsertSession(supabase, chatId, { state: 'PLOMBA_NEW_NUMBER', data: { ...sd, oldPlombaVideoUrl: videoUrl } });
+            await sendMessage(botToken, chatId, "✅ Video saqlandi!\n\n📝 Yangi plomba raqamini kiriting:");
+          } catch (err) {
+            console.error('Video upload error:', err);
+            await sendMessage(botToken, chatId, "❌ Video yuklashda xatolik. Qaytadan yuboring:");
+          }
+          return ok();
+        }
+
+        // Step 3: New plomba number
+        if (state === 'PLOMBA_NEW_NUMBER') {
+          if (!text) { await sendMessage(botToken, chatId, "❌ Yangi plomba raqamini kiriting!"); return ok(); }
+          await upsertSession(supabase, chatId, { state: 'PLOMBA_NEW_PHOTO', data: { ...sd, newPlombaNumber: text } });
+          await sendMessage(botToken, chatId, `✅ Yangi plomba: <b>#${text}</b>\n\n📸 O'rnatilgan yangi plombaning <b>rasmini</b> yuboring:`);
+          return ok();
+        }
+
+        // Step 4: New plomba installation photo
+        if (state === 'PLOMBA_NEW_PHOTO') {
+          if (!photo) { await sendMessage(botToken, chatId, "❌ O'rnatilgan plomba rasmini yuboring!"); return ok(); }
+          
+          try {
+            await sendMessage(botToken, chatId, "⏳ Rasm yuklanmoqda...");
+            const photoFileId = photo[photo.length - 1].file_id;
+            const photoUrl = await downloadAndUploadFile(botToken, supabase, photoFileId, 'new-plomba-photos', 'jpg');
+            
+            // Save plomba record to telegram_settings company_data
+            const { data: setting } = await supabase.from('telegram_settings')
+              .select('company_data')
+              .eq('company_key', sd.companyKey)
+              .maybeSingle();
+            
+            const companyData = setting?.company_data || {};
+            const plombaRecords = companyData.plomba || [];
+            plombaRecords.push({
+              date: new Date().toISOString(),
+              numbers: [sd.newPlombaNumber],
+              status: 'Almashtirildi',
+              oldPlombaNumber: sd.oldPlombaNumber,
+              oldPlombaVideoUrl: sd.oldPlombaVideoUrl,
+              newPlombaNumber: sd.newPlombaNumber,
+              newPlombaPhotoUrl: photoUrl,
+              changedBy: sd.name || sd.login,
+            });
+            
+            await supabase.from('telegram_settings')
+              .update({ company_data: { ...companyData, plomba: plombaRecords }, updated_at: new Date().toISOString() })
+              .eq('company_key', sd.companyKey);
+
+            // Notify boss
+            if (sd.bossChatId) {
+              let bossMsg = `🔒 <b>PLOMBA ALMASHTIRILDI</b>\n\n`;
+              bossMsg += `👷 ${sd.name || sd.login}\n`;
+              bossMsg += `🏢 ${sd.companyName}\n\n`;
+              bossMsg += `❌ Eski plomba: <b>#${sd.oldPlombaNumber}</b>\n`;
+              bossMsg += `✅ Yangi plomba: <b>#${sd.newPlombaNumber}</b>\n`;
+              bossMsg += `📅 ${new Date().toLocaleString('uz-UZ')}\n\n`;
+              bossMsg += `🤖 BAREL.uz`;
+              await sendMessage(botToken, sd.bossChatId, bossMsg);
+              // Send video and photo to boss
+              if (sd.oldPlombaVideoUrl) {
+                await fetch(`${TELEGRAM_API}${botToken}/sendVideo`, {
+                  method: 'POST', headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ chat_id: sd.bossChatId, video: sd.oldPlombaVideoUrl, caption: `📹 Eski plomba #${sd.oldPlombaNumber} uzilishi` }),
+                });
+              }
+              await sendPhoto(botToken, sd.bossChatId, photoFileId, `📸 Yangi plomba #${sd.newPlombaNumber} o'rnatildi`);
+            }
+
+            // Reset to omborchi menu
+            await upsertSession(supabase, chatId, {
+              state: 'AUTHENTICATED',
+              data: { login: sd.login, companyKey: sd.companyKey, bossChatId: sd.bossChatId, fuelTypes: sd.fuelTypes, companyName: sd.companyName, name: sd.name, role: sd.role, stations: sd.stations, stationIndex: sd.stationIndex, inventory: sd.inventory },
+            });
+
+            let summary = `✅ <b>PLOMBA MUVAFFAQIYATLI ALMASHTIRILDI!</b>\n\n`;
+            summary += `❌ Eski: #${sd.oldPlombaNumber}\n`;
+            summary += `✅ Yangi: #${sd.newPlombaNumber}\n`;
+            summary += `📹 Video: Saqlandi\n📸 Rasm: Saqlandi\n\n`;
+            summary += `⏱️ 10 daqiqa ichida o'zgartirishlar kiritish mumkin`;
+
+            await sendMessage(botToken, chatId, summary, {
+              inline_keyboard: [
+                [{ text: "📦 Omborni ko'rish", callback_data: 'omborchi_ombor' }],
+                [{ text: "🔒 Yana plomba almashtirish", callback_data: 'omborchi_plomba' }],
+              ],
+            });
+          } catch (err) {
+            console.error('Photo upload error:', err);
+            await sendMessage(botToken, chatId, "❌ Rasm yuklashda xatolik. Qaytadan yuboring:");
           }
           return ok();
         }
@@ -646,15 +751,8 @@ Deno.serve(async (req) => {
           const role = sd.role || 'OPERATOR';
           if (role === 'BOSS') {
             await showBossMenu(botToken, chatId);
-          } else if (role === 'INSPEKTOR') {
-            await showInspektorMenu(botToken, chatId);
           } else if (role === 'OMBORCHI') {
-            await sendMessage(botToken, chatId, "📋 Quyidagi tugmalardan foydalaning:", {
-              inline_keyboard: [
-                [{ text: "📦 Omborni ko'rish", callback_data: 'omborchi_ombor' }],
-                [{ text: "🔒 Plomba", callback_data: 'omborchi_plomba' }],
-              ],
-            });
+            await showOmborchiMenu(botToken, chatId);
           } else {
             await sendMessage(botToken, chatId, "📋 Quyidagi tugmani bosing:", {
               inline_keyboard: [[{ text: "📊 Ma'lumot kiritish", callback_data: 'menu_kiritish' }]],
@@ -723,7 +821,6 @@ Deno.serve(async (req) => {
     }
 
     if (action === 'stock_alert') {
-      // Automated stock alert
       const { alerts } = body;
       if (!chat_id || !alerts) return new Response(JSON.stringify({ error: 'Missing data' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
       let text = `⚠️ <b>OMBOR OGOHLANTIRISHI</b>\n\n`;
@@ -734,6 +831,15 @@ Deno.serve(async (req) => {
       text += `\n🤖 BAREL.uz avtomatik ogohlantirish`;
       await sendMessage(botToken, chat_id, text);
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+    }
+
+    // Get plomba records for web app
+    if (action === 'get_plomba') {
+      const { company_key } = body;
+      if (!company_key) return new Response(JSON.stringify({ error: 'company_key required' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      const { data: setting } = await supabase.from('telegram_settings').select('company_data').eq('company_key', company_key).maybeSingle();
+      const plomba = setting?.company_data?.plomba || [];
+      return new Response(JSON.stringify({ success: true, plomba }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
 
     return new Response(JSON.stringify({ error: 'Unknown action' }), { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
@@ -760,11 +866,11 @@ async function showBossMenu(botToken: string, chatId: string) {
   });
 }
 
-async function showInspektorMenu(botToken: string, chatId: string) {
+async function showOmborchiMenu(botToken: string, chatId: string) {
   await sendMessage(botToken, chatId, "📋 Quyidagi tugmalardan foydalaning:", {
     inline_keyboard: [
-      [{ text: "📦 Omborni ko'rish", callback_data: 'inspektor_ombor' }],
-      [{ text: "🔒 Plomba boshqarish", callback_data: 'inspektor_plomba' }],
+      [{ text: "📦 Omborni ko'rish", callback_data: 'omborchi_ombor' }],
+      [{ text: "🔒 Plomba almashtirish", callback_data: 'omborchi_plomba' }],
     ],
   });
 }
@@ -844,7 +950,6 @@ async function showConfirmation(botToken: string, supabase: any, chatId: string,
   const naqdPul = totalSales - terminalVal - totalExp;
   summary += `\n💵 <b>Naqd pul: ${numFmt(naqdPul)} so'm</b>`;
 
-  // Profit margin
   const profitMargin = totalSales > 0 ? ((totalSales - totalExp) / totalSales * 100).toFixed(1) : '0.0';
   summary += `\n📈 Foyda marjasi: <b>${profitMargin}%</b>`;
 
@@ -861,11 +966,9 @@ async function sendReportToBoss(botToken: string, supabase: any, chatId: string,
   const bossChatId = sd.bossChatId;
   if (!bossChatId) { await sendMessage(botToken, chatId, '⚠️ Boss Chat ID topilmadi!'); return; }
 
-  // Photos
   if (sd.meterPhotoId) await sendPhoto(botToken, bossChatId, sd.meterPhotoId, `📸 Hisoblagich — ${sd.name || sd.login} (${sd.date})`);
   if (sd.terminalPhotoId) await sendPhoto(botToken, bossChatId, sd.terminalPhotoId, `📸 Terminal chek — ${sd.name || sd.login} (${sd.date})`);
 
-  // Report
   const fuels = sd.fuels || [];
   const expenses = sd.expenses || [];
   const terminalVal = sd.terminal || 0;
@@ -906,7 +1009,6 @@ async function sendReportToBoss(botToken: string, supabase: any, chatId: string,
     inline_keyboard: [[{ text: "💸 Xarajatlar batafsil", callback_data: `detail_exp_${sd.date}` }]],
   });
 
-  // Reset to authenticated
   await upsertSession(supabase, chatId, {
     state: 'AUTHENTICATED',
     data: { login: sd.login, companyKey: sd.companyKey, bossChatId: sd.bossChatId, fuelTypes: sd.fuelTypes, companyName: sd.companyName, name: sd.name, role: sd.role, stations: sd.stations, stationIndex: sd.stationIndex, inventory: sd.inventory },
