@@ -50,17 +50,15 @@ export default function DashboardLayout() {
   }));
 
   const omborchiRoutes = ['/dashboard', '/dashboard/plomba'];
-  const inspektorRoutes = ['/dashboard', '/dashboard/plomba'];
 
   const navItems = [
     ...allNavItems.filter(item => {
       if (!isRouteAllowed(plan, item.path)) return false;
       if (isOperator && item.path !== '/dashboard/meter') return false;
       if (isOmborchi && !omborchiRoutes.includes(item.path)) return false;
-      if (isInspektor && !inspektorRoutes.includes(item.path)) return false;
       return true;
     }),
-    ...((isOperator || isOmborchi || isInspektor) ? [] : customFeatureItems),
+    ...((isOperator || isOmborchi) ? [] : customFeatureItems),
   ];
 
   useEffect(() => {
