@@ -39,7 +39,6 @@ export default function DashboardLayout() {
 
   const isOperator = user?.role === 'OPERATOR';
   const isOmborchi = user?.role === 'OMBORCHI';
-  const isInspektor = user?.role === 'INSPEKTOR';
   
   const customFeatureItems = [
     ...getActiveFeaturesByPlan(plan),
