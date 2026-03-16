@@ -75,6 +75,12 @@ export interface PlombaRecord {
   date: string;
   numbers: string[];
   status: string;
+  // New fields for seal change flow
+  oldPlombaNumber?: string;
+  oldPlombaVideoUrl?: string; // video of breaking old seal
+  newPlombaNumber?: string;
+  newPlombaPhotoUrl?: string; // photo of installed new seal
+  changedBy?: string; // who changed the seal
 }
 
 export interface Payment {

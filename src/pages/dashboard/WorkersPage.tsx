@@ -75,7 +75,6 @@ export default function WorkersPage() {
                   <option value="BOSS">BOSS</option>
                   <option value="OPERATOR">Operator</option>
                   <option value="OMBORCHI">Omborchi</option>
-                  <option value="INSPEKTOR">Inspektor</option>
                 </select>
               </div>
             )}
