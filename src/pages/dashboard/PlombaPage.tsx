@@ -1,33 +1,66 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { updateCompany, addLog } from '@/lib/store';
-import { formatDate, formatDateTime } from '@/lib/helpers';
+import { updateCompany, addLog, type PlombaRecord } from '@/lib/store';
+import { formatDateTime } from '@/lib/helpers';
 import { Button } from '@/components/ui/button';
-import { Lock, Trash2, Play, Image, ExternalLink } from 'lucide-react';
+import { Lock, Trash2, Play, Image as ImageIcon, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import GlassCard from '@/components/GlassCard';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function PlombaPage() {
   const { company, user, refreshCompany } = useAuth();
+  const [cloudPlomba, setCloudPlomba] = useState<PlombaRecord[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  // Fetch plomba records from cloud (telegram_settings)
+  const fetchCloudPlomba = async () => {
+    if (!company) return;
+    setLoading(true);
+    try {
+      const { data } = await supabase.from('telegram_settings')
+        .select('company_data')
+        .eq('company_key', company.key)
+        .maybeSingle();
+      const plomba = (data?.company_data as any)?.plomba || [];
+      setCloudPlomba(plomba);
+    } catch (err) {
+      console.error('Failed to fetch cloud plomba:', err);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchCloudPlomba(); }, [company?.key]);
 
   if (!company) return null;
 
-  // Check if plomba is within 10-min edit window
+  // Merge local and cloud plomba records, deduplicate by date
+  const allPlomba: PlombaRecord[] = [...company.plomba];
+  for (const cp of cloudPlomba) {
+    const exists = allPlomba.some(p => p.date === cp.date && p.newPlombaNumber === cp.newPlombaNumber);
+    if (!exists) allPlomba.push(cp);
+  }
+  allPlomba.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
   const canEdit = (plomba: { date: string }) => {
     const created = new Date(plomba.date).getTime();
-    const now = Date.now();
-    return (now - created) < 10 * 60 * 1000;
+    return (Date.now() - created) < 10 * 60 * 1000;
   };
 
   const deletePlomba = (idx: number) => {
-    const realIdx = company.plomba.length - 1 - idx;
-    const p = company.plomba[realIdx];
+    const p = allPlomba[idx];
     if (!canEdit(p)) { toast.error("10 daqiqa o'tdi, o'chirish mumkin emas!"); return; }
-    updateCompany(company.key, c => {
-      const plomba = [...c.plomba];
-      plomba.splice(realIdx, 1);
-      return { ...c, plomba };
-    });
+    
+    // Check if it's a local record
+    const localIdx = company.plomba.findIndex(lp => lp.date === p.date);
+    if (localIdx >= 0) {
+      updateCompany(company.key, c => {
+        const plomba = [...c.plomba];
+        plomba.splice(localIdx, 1);
+        return { ...c, plomba };
+      });
+    }
+    
     addLog(company.key, user?.login || '', 'Plomba', "Plomba o'chirildi");
     refreshCompany();
     toast.success("Plomba o'chirildi!");
@@ -35,14 +68,20 @@ export default function PlombaPage() {
 
   return (
     <div>
-      <h1 className="text-2xl font-bold text-foreground mb-6">PLOMBA NAZORATI</h1>
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-foreground">PLOMBA NAZORATI</h1>
+        <Button variant="outline" size="sm" onClick={fetchCloudPlomba} disabled={loading}>
+          <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} /> Yangilash
+        </Button>
+      </div>
 
       <GlassCard>
         <h3 className="font-semibold text-foreground mb-4 flex items-center gap-2">
           <Lock className="h-4 w-4 text-primary" /> Plomba tarixi
         </h3>
         <p className="text-sm text-muted-foreground mb-4">
-          📱 Plomba qo'shish va almashtirish Telegram bot orqali amalga oshiriladi (Omborchi roli).
+          📱 Plomba almashtirish Telegram bot orqali amalga oshiriladi (Omborchi roli).
+          <br />Jarayon: Eski plomba raqami → Uzish videosi → Yangi plomba raqami → O'rnatish rasmi
         </p>
 
         <div className="overflow-x-auto">
@@ -59,9 +98,9 @@ export default function PlombaPage() {
               </tr>
             </thead>
             <tbody>
-              {company.plomba.length === 0 ? (
+              {allPlomba.length === 0 ? (
                 <tr><td colSpan={7} className="py-6 text-center text-muted-foreground">Ma'lumot yo'q</td></tr>
-              ) : company.plomba.slice().reverse().map((p, i) => {
+              ) : allPlomba.map((p, i) => {
                 const editable = canEdit(p);
                 const hasNewFlow = !!p.oldPlombaNumber || !!p.newPlombaNumber;
                 return (
@@ -69,16 +108,14 @@ export default function PlombaPage() {
                     <td className="py-3 px-2 text-xs">{formatDateTime(p.date)}</td>
                     <td className="py-3 px-2">
                       {hasNewFlow ? (
-                        <div>
-                          <span className="text-destructive font-medium">#{p.oldPlombaNumber}</span>
-                        </div>
+                        <span className="text-destructive font-medium">#{p.oldPlombaNumber}</span>
                       ) : (
                         <span className="text-muted-foreground">—</span>
                       )}
                     </td>
                     <td className="py-3 px-2">
                       {hasNewFlow ? (
-                        <span className="text-success font-medium">#{p.newPlombaNumber}</span>
+                        <span className="text-green-600 dark:text-green-400 font-medium">#{p.newPlombaNumber}</span>
                       ) : (
                         <span>{p.numbers.join(', ')}</span>
                       )}
@@ -95,7 +132,7 @@ export default function PlombaPage() {
                         {p.newPlombaPhotoUrl && (
                           <a href={p.newPlombaPhotoUrl} target="_blank" rel="noopener noreferrer"
                              className="inline-flex items-center gap-1 text-xs bg-primary/10 text-primary px-2 py-1 rounded-md hover:bg-primary/20 transition-colors">
-                            <Image className="h-3 w-3" /> Rasm
+                            <ImageIcon className="h-3 w-3" /> Rasm
                           </a>
                         )}
                         {!p.oldPlombaVideoUrl && !p.newPlombaPhotoUrl && (
@@ -104,7 +141,11 @@ export default function PlombaPage() {
                       </div>
                     </td>
                     <td className="py-3 px-2">
-                      <span className="bg-success/10 text-success text-xs px-2 py-0.5 rounded-md">{p.status}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-md ${
+                        p.status === 'Almashtirildi' 
+                          ? 'bg-blue-500/10 text-blue-600 dark:text-blue-400' 
+                          : 'bg-green-500/10 text-green-600 dark:text-green-400'
+                      }`}>{p.status}</span>
                     </td>
                     <td className="py-3 px-2 text-right">
                       {editable ? (
