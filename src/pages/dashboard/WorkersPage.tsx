@@ -14,7 +14,7 @@ export default function WorkersPage() {
   const [login, setLogin] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'BOSS' | 'OPERATOR' | 'OMBORCHI' | 'INSPEKTOR'>('OPERATOR');
+  const [role, setRole] = useState<'BOSS' | 'OPERATOR' | 'OMBORCHI'>('OPERATOR');
   const [logFrom, setLogFrom] = useState(getMonthAgoStr());
   const [logTo, setLogTo] = useState(getTodayStr());
   const [detailLog, setDetailLog] = useState<any>(null);
