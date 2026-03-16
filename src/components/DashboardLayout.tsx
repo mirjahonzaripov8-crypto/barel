@@ -73,10 +73,7 @@ export default function DashboardLayout() {
     if (isOmborchi && !omborchiRoutes.includes(location.pathname)) {
       navigate('/dashboard');
     }
-    if (isInspektor && !inspektorRoutes.includes(location.pathname)) {
-      navigate('/dashboard');
-    }
-  }, [location.pathname, plan, navigate, isOperator, isOmborchi, isInspektor]);
+  }, [location.pathname, plan, navigate, isOperator, isOmborchi]);
 
   const handleLogout = () => { logout(); navigate('/'); };
   const isActive = (path: string) => location.pathname === path;
