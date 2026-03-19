@@ -1,216 +1,142 @@
-import { useState, useRef, useEffect } from 'react';
-import { Bot, Send, Sparkles, PlusCircle, Loader2, Upload, CreditCard } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Bot, Send, Sparkles, PlusCircle, Loader2, Upload, CreditCard, Lightbulb } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { useAuth } from '@/contexts/AuthContext';
 import { formatCurrency } from '@/lib/helpers';
-import { addFeatureRequest, getFeatureRequests, updateFeatureRequest, getAdminCard, addPayment, type FeatureRequest, type Payment } from '@/lib/store';
+import { addFeatureRequest, getFeatureRequests, updateFeatureRequest, getAdminCard, addPayment, getCurrentStation, getStationData, type FeatureRequest, type Payment } from '@/lib/store';
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter
 } from '@/components/ui/dialog';
 import { toast } from 'sonner';
 
 interface Message {
-  role: 'user' | 'ai';
-  text: string;
+  role: 'user' | 'assistant';
+  content: string;
 }
 
-function getCompanyAnalysis(company: any) {
+const AI_CHAT_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`;
+
+function buildCompanyData(company: any) {
   if (!company) return null;
-
-  const data = company.data || [];
-  const last7 = data.slice(-7);
-  const last30 = data.slice(-30);
-
-  const totalRevenue = last30.reduce((s: number, d: any) => s + d.fuels.reduce((a: number, f: any) => a + f.sold * f.price, 0), 0);
-  const totalExpenses = last30.reduce((s: number, d: any) => s + d.expenses.reduce((a: number, e: any) => a + e.amount, 0), 0);
-  const totalTerminal = last30.reduce((s: number, d: any) => s + (d.terminal || 0), 0);
-  const totalCost = last30.reduce((s: number, d: any) => s + d.fuels.reduce((a: number, f: any) => a + (f.prixod || 0) * (f.tannarx || 0), 0), 0);
-  const netProfit = totalRevenue - totalExpenses - totalCost;
-
-  const fuelStats: Record<string, { sold: number; revenue: number; cost: number }> = {};
-  last30.forEach((d: any) => {
-    d.fuels.forEach((f: any) => {
-      if (!fuelStats[f.type]) fuelStats[f.type] = { sold: 0, revenue: 0, cost: 0 };
-      fuelStats[f.type].sold += f.sold;
-      fuelStats[f.type].revenue += f.sold * f.price;
-      fuelStats[f.type].cost += (f.prixod || 0) * (f.tannarx || 0);
-    });
-  });
-
-  const lastDay = data[data.length - 1];
-  const lastDayRevenue = lastDay ? lastDay.fuels.reduce((a: number, f: any) => a + f.sold * f.price, 0) : 0;
-  const lastDayExpenses = lastDay ? lastDay.expenses.reduce((a: number, e: any) => a + e.amount, 0) : 0;
-
-  const expReasons: Record<string, number> = {};
-  last30.forEach((d: any) => {
-    d.expenses.forEach((e: any) => {
-      expReasons[e.reason] = (expReasons[e.reason] || 0) + e.amount;
-    });
-  });
-  const topExpenses = Object.entries(expReasons).sort((a, b) => b[1] - a[1]).slice(0, 5);
-
-  const avgDailyRevenue = last30.length > 0 ? totalRevenue / last30.length : 0;
+  const stationIndex = getCurrentStation();
+  const stationData = getStationData(company, stationIndex);
+  
+  // Get all stations data for multi-station analysis
+  const allStationsData = company.stations?.map((name: string, i: number) => ({
+    name,
+    data: getStationData(company, i),
+  })) || [];
 
   return {
-    totalRevenue, totalExpenses, totalTerminal, totalCost, netProfit,
-    fuelStats, lastDay, lastDayRevenue, lastDayExpenses,
-    topExpenses, avgDailyRevenue, daysCount: last30.length,
-    plan: company.plan, stationsCount: company.stations.length,
-    fuelTypesCount: company.fuelTypes.length,
-    workersCount: company.users.length,
+    company: {
+      name: company.name,
+      plan: company.plan,
+      stations: company.stations,
+      fuelTypes: company.fuelTypes,
+      users: company.users,
+    },
+    stationIndex,
+    stationData,
+    allStationsData,
   };
 }
 
-function generateAnswer(question: string, company: any): string {
-  const q = question.toLowerCase().trim();
-  const analysis = getCompanyAnalysis(company);
+async function streamChat({
+  messages,
+  companyData,
+  onDelta,
+  onDone,
+  onError,
+}: {
+  messages: { role: string; content: string }[];
+  companyData: any;
+  onDelta: (text: string) => void;
+  onDone: () => void;
+  onError: (err: string) => void;
+}) {
+  const resp = await fetch(AI_CHAT_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+    },
+    body: JSON.stringify({ messages, companyData }),
+  });
 
-  // Check completed feature request prompts — these act as custom AI knowledge
-  if (company) {
-    const doneRequests = getFeatureRequests().filter(
-      r => r.companyKey === company.key && r.status === 'done' && r.adminPrompt
-    );
-    for (const req of doneRequests) {
-      // Check if question relates to this feature by matching keywords from description
-      const descWords = req.description.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-      const matchCount = descWords.filter(w => q.includes(w)).length;
-      if (matchCount >= 1 || q.includes(req.description.toLowerCase().slice(0, 15))) {
-        return `✅ ${req.adminPrompt}`;
+  if (!resp.ok) {
+    if (resp.status === 429) {
+      onError("So'rovlar limiti oshib ketdi. Biroz kutib qayta urinib ko'ring.");
+      return;
+    }
+    if (resp.status === 402) {
+      onError("AI xizmati uchun kredit tugadi.");
+      return;
+    }
+    const errData = await resp.json().catch(() => ({}));
+    onError(errData.error || "AI xizmati xatosi");
+    return;
+  }
+
+  if (!resp.body) {
+    onError("Stream boshlanmadi");
+    return;
+  }
+
+  const reader = resp.body.getReader();
+  const decoder = new TextDecoder();
+  let textBuffer = "";
+  let streamDone = false;
+
+  while (!streamDone) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    textBuffer += decoder.decode(value, { stream: true });
+
+    let newlineIndex: number;
+    while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+      let line = textBuffer.slice(0, newlineIndex);
+      textBuffer = textBuffer.slice(newlineIndex + 1);
+
+      if (line.endsWith("\r")) line = line.slice(0, -1);
+      if (line.startsWith(":") || line.trim() === "") continue;
+      if (!line.startsWith("data: ")) continue;
+
+      const jsonStr = line.slice(6).trim();
+      if (jsonStr === "[DONE]") {
+        streamDone = true;
+        break;
+      }
+
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+        if (content) onDelta(content);
+      } catch {
+        textBuffer = line + "\n" + textBuffer;
+        break;
       }
     }
   }
 
-  if (!analysis) return "Korxona ma'lumotlari topilmadi. Iltimos, tizimga qaytadan kiring.";
-  if (analysis.daysCount === 0) return "Hozircha hech qanday sotuv ma'lumoti kiritilmagan. Hisoblagich sahifasidan kunlik ma'lumot kiritishni boshlang.";
-
-  if (/salom|assalom|hey|privet|hi\b/.test(q)) {
-    return `Assalomu alaykum! Men BAREL.uz AI yordamchisiman. Korxonangiz haqida savollar bering — sotuv, xarajat, foyda, maslahat va boshqalar. Qanday yordam bera olaman?`;
-  }
-
-  if (/tushum|sotuv|daromad|revenue|savdo/.test(q)) {
-    let resp = `📊 Oxirgi ${analysis.daysCount} kunda:\n\n`;
-    resp += `💰 Jami tushum: ${formatCurrency(analysis.totalRevenue)}\n`;
-    resp += `📈 Kunlik o'rtacha: ${formatCurrency(analysis.avgDailyRevenue)}\n\n`;
-    resp += `Mahsulotlar bo'yicha:\n`;
-    Object.entries(analysis.fuelStats).forEach(([name, s]: [string, any]) => {
-      resp += `• ${name}: ${s.sold.toLocaleString()} L — ${formatCurrency(s.revenue)}\n`;
-    });
-    if (analysis.lastDay) {
-      resp += `\nOxirgi kun tushumi: ${formatCurrency(analysis.lastDayRevenue)}`;
+  // Final flush
+  if (textBuffer.trim()) {
+    for (let raw of textBuffer.split("\n")) {
+      if (!raw) continue;
+      if (raw.endsWith("\r")) raw = raw.slice(0, -1);
+      if (raw.startsWith(":") || raw.trim() === "") continue;
+      if (!raw.startsWith("data: ")) continue;
+      const jsonStr = raw.slice(6).trim();
+      if (jsonStr === "[DONE]") continue;
+      try {
+        const parsed = JSON.parse(jsonStr);
+        const content = parsed.choices?.[0]?.delta?.content as string | undefined;
+        if (content) onDelta(content);
+      } catch { /* ignore */ }
     }
-    return resp;
   }
 
-  if (/xarajat|harajat|chiqim|expense|sarf/.test(q)) {
-    let resp = `📉 Oxirgi ${analysis.daysCount} kunda jami xarajat: ${formatCurrency(analysis.totalExpenses)}\n\n`;
-    if (analysis.topExpenses.length > 0) {
-      resp += `Eng katta xarajatlar:\n`;
-      analysis.topExpenses.forEach(([reason, amount]) => {
-        resp += `• ${reason}: ${formatCurrency(amount as number)}\n`;
-      });
-    }
-    if (analysis.totalExpenses > analysis.totalRevenue * 0.3) {
-      resp += `\n⚠️ Maslahat: Xarajatlaringiz tushumning ${Math.round(analysis.totalExpenses / analysis.totalRevenue * 100)}% ni tashkil qilmoqda. Bu ko'rsatkichni 20-25% gacha kamaytirishga harakat qiling.`;
-    }
-    return resp;
-  }
-
-  if (/foyda|profit|daromad|sof|net|natija/.test(q)) {
-    let resp = `💵 Oxirgi ${analysis.daysCount} kun moliyaviy natijasi:\n\n`;
-    resp += `Tushum: ${formatCurrency(analysis.totalRevenue)}\n`;
-    resp += `Xarajatlar: ${formatCurrency(analysis.totalExpenses)}\n`;
-    resp += `Tannarx (prixod): ${formatCurrency(analysis.totalCost)}\n`;
-    resp += `Terminal: ${formatCurrency(analysis.totalTerminal)}\n`;
-    resp += `━━━━━━━━━━━━\n`;
-    resp += `SOF FOYDA: ${formatCurrency(analysis.netProfit)}\n\n`;
-    if (analysis.netProfit > 0) {
-      resp += `✅ Korxonangiz foydada ishlayapti.`;
-      const margin = Math.round(analysis.netProfit / analysis.totalRevenue * 100);
-      resp += ` Foyda margini: ${margin}%.`;
-      if (margin < 10) resp += ` Margini oshirish uchun tannarxni kamaytirish yoki narxlarni ko'tarish maslahat beriladi.`;
-    } else {
-      resp += `❌ Korxona zararда ishlayapti! Xarajatlarni kamaytiring yoki sotuv narxlarini qayta ko'rib chiqing.`;
-    }
-    return resp;
-  }
-
-  if (/terminal/.test(q)) {
-    const termPercent = analysis.totalRevenue > 0 ? Math.round(analysis.totalTerminal / analysis.totalRevenue * 100) : 0;
-    return `💳 Oxirgi ${analysis.daysCount} kunda terminal orqali: ${formatCurrency(analysis.totalTerminal)} (umumiy tushumning ${termPercent}%)\n\nNaqd pul: ${formatCurrency(analysis.totalRevenue - analysis.totalTerminal - analysis.totalExpenses)}`;
-  }
-
-  if (/mahsulot|yoqilgi|benzin|propan|dizel|metan|ai-9|fuel/.test(q)) {
-    let resp = `⛽ Mahsulotlar tahlili (oxirgi ${analysis.daysCount} kun):\n\n`;
-    Object.entries(analysis.fuelStats).forEach(([name, s]: [string, any]) => {
-      const profit = s.revenue - s.cost;
-      resp += `🔹 ${name}:\n`;
-      resp += `  Sotilgan: ${s.sold.toLocaleString()} L\n`;
-      resp += `  Tushum: ${formatCurrency(s.revenue)}\n`;
-      resp += `  Tannarx: ${formatCurrency(s.cost)}\n`;
-      resp += `  Foyda: ${formatCurrency(profit)}\n\n`;
-    });
-    const best = Object.entries(analysis.fuelStats).sort((a: any, b: any) => b[1].revenue - a[1].revenue)[0];
-    if (best) resp += `🏆 Eng ko'p sotuv: ${best[0]}`;
-    return resp;
-  }
-
-  if (/maslahat|tavsiya|advice|nima qilish|yaxshilash|taklif/.test(q)) {
-    let resp = `💡 Korxonangiz uchun maslahatlar:\n\n`;
-    const margin = analysis.totalRevenue > 0 ? analysis.netProfit / analysis.totalRevenue : 0;
-
-    if (margin < 0.1) resp += `1. ⚠️ Foyda margini past (${Math.round(margin*100)}%). Narxlarni ko'tarishni yoki arzonroq yetkazib beruvchi topishni o'ylang.\n\n`;
-    else resp += `1. ✅ Foyda margini yaxshi (${Math.round(margin*100)}%). Davom ettiring!\n\n`;
-
-    if (analysis.totalExpenses > analysis.totalRevenue * 0.25) {
-      resp += `2. 📉 Xarajatlar tushumning ${Math.round(analysis.totalExpenses/analysis.totalRevenue*100)}% ni tashkil qilmoqda. Eng katta xarajat: ${analysis.topExpenses[0]?.[0] || '—'} (${formatCurrency((analysis.topExpenses[0]?.[1] as number) || 0)}). Kamaytirishga harakat qiling.\n\n`;
-    } else {
-      resp += `2. ✅ Xarajatlar nazorat ostida.\n\n`;
-    }
-
-    const termPercent = analysis.totalRevenue > 0 ? analysis.totalTerminal / analysis.totalRevenue : 0;
-    resp += `3. 💳 Terminal ulushi: ${Math.round(termPercent*100)}%. ${termPercent > 0.5 ? 'Terminal to\'lovlar ko\'p — naqd pul oqimiga e\'tibor bering.' : 'Naqd pul oqimi yaxshi.'}\n\n`;
-
-    const fuels = Object.entries(analysis.fuelStats).map(([n, s]: [string, any]) => ({ name: n, profit: s.revenue - s.cost, sold: s.sold }));
-    const best = fuels.sort((a, b) => b.profit - a.profit)[0];
-    const worst = fuels.sort((a, b) => a.profit - b.profit)[0];
-    if (best) resp += `4. 🏆 Eng foydali mahsulot: ${best.name} (${formatCurrency(best.profit)} foyda)\n`;
-    if (worst && fuels.length > 1) resp += `5. 📊 Eng kam foydali: ${worst.name} — narxni oshirish yoki tannarxni kamaytirish maslahat.\n`;
-
-
-    return resp;
-  }
-
-  if (/korxona|kompaniya|info|ma'lumot|haqida/.test(q)) {
-    return `🏢 Korxona: ${company.name}\n📋 Tarif: ${company.plan}\n⛽ Zapravkalar: ${analysis.stationsCount} ta\n🔧 Mahsulot turlari: ${analysis.fuelTypesCount} ta\n👥 Ishchilar: ${analysis.workersCount} ta\n📅 Ma'lumot: ${analysis.daysCount} kunlik`;
-  }
-
-  if (/yordam|help|nima|qanday|bilasanmi|nimalar/.test(q)) {
-    let helpText = `Men quyidagi savollarga javob bera olaman:\n\n• 💰 Sotuv va tushum haqida\n• 📉 Xarajatlar tahlili\n• 💵 Foyda va zarar\n• 💳 Terminal ma'lumotlari\n• ⛽ Mahsulotlar tahlili\n• 💡 Maslahat va tavsiyalar\n• 🏢 Korxona ma'lumotlari`;
-    // Show custom features
-    if (company) {
-      const doneReqs = getFeatureRequests().filter(r => r.companyKey === company.key && r.status === 'done' && r.adminPrompt);
-      if (doneReqs.length > 0) {
-        helpText += `\n\n🔧 Maxsus funksiyalar:\n`;
-        doneReqs.forEach(r => { helpText += `• ${r.description}\n`; });
-      }
-    }
-    helpText += `\nMasalan: "Foydamni ko'rsat", "Maslahat ber", "Qaysi mahsulot eng foydali?"`;
-    return helpText;
-  }
-
-  const appKeywords = /sotuv|sotil|tushum|xarajat|harajat|foyda|zarar|terminal|mahsulot|yoqilgi|benzin|propan|dizel|metan|narx|pul|summa|kassa|litr|korxona|zapravka|ishchi|operator|plomba|hisoblagich|moliya|arxiv|referal|tarif|obuna|maslahat|tavsiya|tahlil|statistika|grafik|pdf|parol|lock|blok/;
-
-  if (!appKeywords.test(q)) {
-    return `❌ Kechirasiz, men faqat korxona va ilova bilan bog'liq savollarga javob beraman.\n\nMen yordam bera oladigan mavzular:\n• 💰 Sotuv va tushum\n• 📉 Xarajatlar\n• 💵 Foyda va zarar\n• ⛽ Mahsulotlar tahlili\n• 💡 Maslahat va tavsiyalar\n\nMasalan: "Foydamni ko'rsat", "Maslahat ber", "Xarajatlarim qancha?"`;
-  }
-
-  let resp = `📊 Korxonangiz haqida qisqacha:\n\n`;
-  resp += `💰 Oxirgi ${analysis.daysCount} kun tushumi: ${formatCurrency(analysis.totalRevenue)}\n`;
-  resp += `💵 Sof foyda: ${formatCurrency(analysis.netProfit)}\n`;
-  resp += `📉 Xarajatlar: ${formatCurrency(analysis.totalExpenses)}\n\n`;
-  resp += `Aniqroq javob olish uchun so'rang:\n• "Sotuv qancha?"\n• "Xarajatlarim nima?"\n• "Maslahat ber"\n• "Qaysi mahsulot foydali?"`;
-  return resp;
+  onDone();
 }
 
 function FeaturePaymentSection({ request, onPaid, companyKey }: { request: FeatureRequest; onPaid: () => void; companyKey: string }) {
@@ -229,8 +155,6 @@ function FeaturePaymentSection({ request, onPaid, companyKey }: { request: Featu
   const submitPayment = () => {
     if (!receiptBase64) return;
     setUploading(true);
-
-    // Create payment record for admin to see
     const payment: Payment = {
       id: `pay_feat_${Date.now()}`,
       companyKey,
@@ -240,14 +164,11 @@ function FeaturePaymentSection({ request, onPaid, companyKey }: { request: Featu
       receipt_base64: receiptBase64,
     };
     addPayment(payment);
-
-    // Update feature request status
     updateFeatureRequest(request.id, (req: FeatureRequest) => ({
       ...req,
       status: 'paid' as const,
       updated_at: new Date().toISOString(),
     }));
-
     toast.success("Chek yuborildi! Admin tez orada tasdiqlaydi.");
     setUploading(false);
     onPaid();
@@ -269,7 +190,6 @@ function FeaturePaymentSection({ request, onPaid, companyKey }: { request: Featu
           <p className="text-sm font-bold text-primary mt-2">To'lov summasi: {formatCurrency(request.price)}</p>
         )}
       </div>
-
       <label className="flex items-center justify-center gap-2 px-4 py-3 bg-secondary rounded-lg cursor-pointer hover:bg-secondary/80 transition-colors">
         <Upload className="h-4 w-4 text-muted-foreground" />
         <span className="text-sm font-medium text-foreground">
@@ -277,7 +197,6 @@ function FeaturePaymentSection({ request, onPaid, companyKey }: { request: Featu
         </span>
         <input type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
       </label>
-
       {receiptBase64 && (
         <Button onClick={submitPayment} className="w-full" disabled={uploading}>
           <CreditCard className="h-4 w-4 mr-2" /> To'lovni yuborish
@@ -291,11 +210,14 @@ export default function AIAssistantPage() {
   const { company } = useAuth();
   const [input, setInput] = useState('');
   const [messages, setMessages] = useState<Message[]>([]);
+  const [isStreaming, setIsStreaming] = useState(false);
   const chatRef = useRef<HTMLDivElement>(null);
   const [featureOpen, setFeatureOpen] = useState(false);
   const [featureDesc, setFeatureDesc] = useState('');
   const [myRequests, setMyRequests] = useState<FeatureRequest[]>([]);
   const [, setRefresh] = useState(0);
+  const [dailyTip, setDailyTip] = useState<string | null>(null);
+  const [tipLoading, setTipLoading] = useState(false);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -308,6 +230,45 @@ export default function AIAssistantPage() {
     }
   }, [company]);
 
+  // Load daily tip
+  useEffect(() => {
+    if (!company) return;
+    const tipKey = `barel_daily_tip_${company.key}_${new Date().toISOString().split('T')[0]}`;
+    const cached = localStorage.getItem(tipKey);
+    if (cached) {
+      setDailyTip(cached);
+      return;
+    }
+    // Auto-generate daily tip
+    generateDailyTip(tipKey);
+  }, [company]);
+
+  const generateDailyTip = useCallback(async (tipKey: string) => {
+    if (!company || tipLoading) return;
+    setTipLoading(true);
+    const companyData = buildCompanyData(company);
+    
+    let tipText = "";
+    try {
+      await streamChat({
+        messages: [{ role: "user", content: "Bugun korxonam uchun bitta eng muhim tavsiya ber. Qisqa va aniq bo'lsin. Raqamlar va foizlar bilan asosla. Faqat 2-3 jumla." }],
+        companyData,
+        onDelta: (chunk) => { tipText += chunk; },
+        onDone: () => {
+          setDailyTip(tipText);
+          localStorage.setItem(tipKey, tipText);
+          setTipLoading(false);
+        },
+        onError: (err) => {
+          console.error("Tip error:", err);
+          setTipLoading(false);
+        },
+      });
+    } catch {
+      setTipLoading(false);
+    }
+  }, [company, tipLoading]);
+
   const refreshRequests = () => {
     if (company) {
       setMyRequests(getFeatureRequests().filter(r => r.companyKey === company.key));
@@ -315,16 +276,44 @@ export default function AIAssistantPage() {
     }
   };
 
-  const send = () => {
-    if (!input.trim()) return;
-    const userMsg: Message = { role: 'user', text: input };
-    setMessages(prev => [...prev, userMsg]);
-
-    const answer = generateAnswer(input, company);
-    setTimeout(() => {
-      setMessages(prev => [...prev, { role: 'ai', text: answer }]);
-    }, 300);
+  const send = async () => {
+    if (!input.trim() || isStreaming || !company) return;
+    const userMsg: Message = { role: 'user', content: input };
+    const newMessages = [...messages, userMsg];
+    setMessages(newMessages);
     setInput('');
+    setIsStreaming(true);
+
+    let assistantSoFar = "";
+    const companyData = buildCompanyData(company);
+
+    const upsertAssistant = (chunk: string) => {
+      assistantSoFar += chunk;
+      setMessages(prev => {
+        const last = prev[prev.length - 1];
+        if (last?.role === 'assistant') {
+          return prev.map((m, i) => (i === prev.length - 1 ? { ...m, content: assistantSoFar } : m));
+        }
+        return [...prev, { role: 'assistant', content: assistantSoFar }];
+      });
+    };
+
+    try {
+      await streamChat({
+        messages: newMessages.map(m => ({ role: m.role, content: m.content })),
+        companyData,
+        onDelta: upsertAssistant,
+        onDone: () => setIsStreaming(false),
+        onError: (err) => {
+          toast.error(err);
+          setIsStreaming(false);
+        },
+      });
+    } catch (e) {
+      console.error(e);
+      toast.error("AI bilan bog'lanishda xatolik");
+      setIsStreaming(false);
+    }
   };
 
   const submitFeatureRequest = () => {
@@ -355,6 +344,15 @@ export default function AIAssistantPage() {
     }
   };
 
+  const quickPrompts = [
+    'Operatorlarga haftalik maosh qancha berish kerak?',
+    'Omborchiga oylik maosh tavsiya qil',
+    'Korxonamni tahlil qil',
+    'Foydani oshirish uchun maslahat ber',
+    'Xarajatlarimni optimallashtir',
+    'Qaysi mahsulot eng foydali?',
+  ];
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -367,15 +365,32 @@ export default function AIAssistantPage() {
         </Button>
       </div>
 
+      {/* Daily Tip */}
+      {(dailyTip || tipLoading) && (
+        <div className="mb-4 bg-gradient-to-r from-primary/10 to-accent/10 border border-primary/20 rounded-xl p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <Lightbulb className="h-5 w-5 text-primary" />
+            <h3 className="text-sm font-bold text-foreground">Bugungi tavsiya</h3>
+          </div>
+          {tipLoading ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" /> Tahlil qilinmoqda...
+            </div>
+          ) : (
+            <p className="text-sm text-foreground leading-relaxed">{dailyTip}</p>
+          )}
+        </div>
+      )}
+
       <div className="bg-card border border-border rounded-lg flex flex-col h-[500px]">
         <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-3">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <Bot className="h-12 w-12 text-primary/30 mb-3" />
-              <p className="text-muted-foreground mb-2">Savolingizni yozing — korxonangiz ma'lumotlarini tahlil qilaman!</p>
-              <div className="flex flex-wrap gap-2 justify-center mt-3">
-                {['Sotuv qancha?', 'Maslahat ber', 'Foydamni ko\'rsat', 'Xarajatlarim'].map(s => (
-                  <button key={s} onClick={() => { setInput(s); }} className="text-xs bg-secondary hover:bg-secondary/80 text-foreground px-3 py-1.5 rounded-full border border-border transition-colors">
+              <p className="text-muted-foreground mb-2">Savolingizni yozing — AI korxonangizni tahlil qiladi!</p>
+              <div className="flex flex-wrap gap-2 justify-center mt-3 max-w-md">
+                {quickPrompts.map(s => (
+                  <button key={s} onClick={() => setInput(s)} className="text-xs bg-secondary hover:bg-secondary/80 text-foreground px-3 py-1.5 rounded-full border border-border transition-colors">
                     {s}
                   </button>
                 ))}
@@ -385,10 +400,21 @@ export default function AIAssistantPage() {
           {messages.map((m, i) => (
             <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] rounded-lg px-4 py-2.5 text-sm whitespace-pre-line ${m.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-secondary text-foreground'}`}>
-                {m.text}
+                {m.content}
+                {isStreaming && i === messages.length - 1 && m.role === 'assistant' && (
+                  <span className="inline-block w-1.5 h-4 bg-primary/60 ml-1 animate-pulse" />
+                )}
               </div>
             </div>
           ))}
+          {isStreaming && messages[messages.length - 1]?.role === 'user' && (
+            <div className="flex justify-start">
+              <div className="bg-secondary rounded-lg px-4 py-2.5 flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Tahlil qilmoqda...</span>
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="border-t border-border p-3 flex gap-2">
@@ -399,8 +425,11 @@ export default function AIAssistantPage() {
             placeholder="Savolingizni yozing..."
             className="flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
             rows={2}
+            disabled={isStreaming}
           />
-          <Button onClick={send} size="icon" className="self-end h-10 w-10"><Send className="h-4 w-4" /></Button>
+          <Button onClick={send} size="icon" className="self-end h-10 w-10" disabled={isStreaming}>
+            {isStreaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+          </Button>
         </div>
       </div>
 
@@ -423,11 +452,7 @@ export default function AIAssistantPage() {
                   </div>
                 )}
                 {r.status === 'priced' && (
-                  <FeaturePaymentSection
-                    request={r}
-                    onPaid={() => refreshRequests()}
-                    companyKey={company?.key || ''}
-                  />
+                  <FeaturePaymentSection request={r} onPaid={() => refreshRequests()} companyKey={company?.key || ''} />
                 )}
                 {r.status === 'done' && r.adminPrompt && (
                   <div className="mt-2 bg-success/5 border border-success/20 rounded-md p-3">

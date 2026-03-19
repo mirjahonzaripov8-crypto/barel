@@ -2,3 +2,6 @@ project_id = "rwmtdtyvdbqytqoihnol"
 
 [functions.telegram-bot]
 verify_jwt = false
+
+[functions.ai-assistant]
+verify_jwt = false
