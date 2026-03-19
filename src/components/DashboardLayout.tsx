@@ -26,7 +26,7 @@ const allNavItems = [
   { path: '/dashboard/safe', icon: Vault, label: 'Seyf', minPlan: 'STANDART' },
   { path: '/dashboard/reminders', icon: Bell, label: 'Eslatmalar', minPlan: 'STANDART' },
   { path: '/dashboard/security', icon: Shield, label: 'Sozlamalar' },
-  { path: '/dashboard/ai', icon: Bot, label: 'AI yordamchi', minPlan: 'PREMIUM' },
+  { path: '/dashboard/ai', icon: Bot, label: 'AI yordamchi', minPlan: 'STANDART' },
 ];
 
 export default function DashboardLayout() {
